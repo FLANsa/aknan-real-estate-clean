@@ -7,7 +7,18 @@ export async function uploadPropertyImage(file: File, propertyId: string): Promi
   formData.append('file', file);
   formData.append('propertyId', propertyId);
 
-  // Use local upload as fallback
+  try {
+    // Try Firebase Storage first
+    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+    if (res.ok) {
+      const data = await res.json();
+      return data.url as string;
+    }
+  } catch (error) {
+    console.warn('Firebase Storage upload failed, trying local upload:', error);
+  }
+
+  // Fallback to local upload
   const res = await fetch('/api/upload-local', { method: 'POST', body: formData });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

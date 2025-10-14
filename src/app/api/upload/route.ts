@@ -37,14 +37,13 @@ export async function POST(req: NextRequest) {
       resumable: false, // أسرع لملفات صغيرة/متوسطة
     });
 
-    // رابط موقّع لمدة ساعة (خيار آمن ولا يحتاج جعل الملف عامًا):
-    const [signedUrl] = await blob.getSignedUrl({
-      action: 'read',
-      expires: Date.now() + 60 * 60 * 1000, // 1 ساعة
-      version: 'v4',
-    });
+    // جعل الملف عاماً للوصول المباشر
+    await blob.makePublic();
+    
+    // رابط عام مباشر
+    const publicUrl = `https://storage.googleapis.com/${bucketName}/${filePath}`;
 
-    return NextResponse.json({ url: signedUrl, path: filePath });
+    return NextResponse.json({ url: publicUrl, path: filePath });
   } catch (e: any) {
     console.error('Upload error:', e?.message || e);
     return NextResponse.json(

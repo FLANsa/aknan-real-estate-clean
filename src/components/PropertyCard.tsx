@@ -12,7 +12,7 @@ interface PropertyCardProps {
 }
 
 export default function PropertyCard({ property }: PropertyCardProps) {
-  const mainImage = property.images[0] || '/placeholder-property.jpg';
+  const mainImage = property.images?.[0] || '/placeholder-property.jpg';
   
   return (
     <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 h-full flex flex-col">
@@ -23,6 +23,13 @@ export default function PropertyCard({ property }: PropertyCardProps) {
           fill
           className="object-cover"
           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          onError={(e) => {
+            // Fallback to placeholder if image fails to load
+            const target = e.target as HTMLImageElement;
+            if (target.src !== '/placeholder-property.jpg') {
+              target.src = '/placeholder-property.jpg';
+            }
+          }}
         />
         {property.featured && (
           <Badge className="absolute top-2 right-2 bg-yellow-500 hover:bg-yellow-500">
