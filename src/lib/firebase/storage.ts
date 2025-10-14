@@ -7,25 +7,39 @@ export async function uploadPropertyImage(file: File, propertyId: string): Promi
   formData.append('file', file);
   formData.append('propertyId', propertyId);
 
+  // Try Firebase Storage first (preferred for production)
   try {
-    // Try Firebase Storage first
+    console.log('🔄 Trying Firebase Storage upload...');
     const res = await fetch('/api/upload', { method: 'POST', body: formData });
     if (res.ok) {
       const data = await res.json();
+      console.log('✅ Firebase Storage upload successful:', data.url);
       return data.url as string;
+    } else {
+      const errorData = await res.json().catch(() => ({}));
+      console.warn('❌ Firebase Storage upload failed:', errorData);
+      throw new Error(`Firebase Storage failed: ${errorData.error || 'Unknown error'}`);
     }
   } catch (error) {
-    console.warn('Firebase Storage upload failed, trying local upload:', error);
+    console.warn('❌ Firebase Storage upload error:', error);
+    
+    // Fallback to local upload only in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔄 Trying local upload as fallback (development only)...');
+      const res = await fetch('/api/upload-local', { method: 'POST', body: formData });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        console.error('❌ Local upload failed:', err);
+        throw new Error(err?.error || 'All upload methods failed');
+      }
+      const data = await res.json();
+      console.log('✅ Local upload successful:', data.url);
+      return data.url as string;
+    } else {
+      // In production, don't fallback to local upload
+      throw new Error('Firebase Storage upload failed and local upload is not available in production');
+    }
   }
-
-  // Fallback to local upload
-  const res = await fetch('/api/upload-local', { method: 'POST', body: formData });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error || 'Upload failed');
-  }
-  const data = await res.json();
-  return data.url as string;
 }
 
 export async function deletePropertyImage(imageUrl: string): Promise<void> {

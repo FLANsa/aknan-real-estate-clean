@@ -26,6 +26,10 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
+    // السماح بعرض الصور المحلية
+    unoptimized: false,
+    // إضافة مسارات محلية للصور
+    domains: ['localhost'],
   },
 };
 
