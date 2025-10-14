@@ -8,7 +8,7 @@ import { createPropertySlug, generateUniqueSlug } from '@/lib/utils/slugify';
 import { Property, PropertyListResponse } from '@/types/property';
 import { FieldValue } from 'firebase-admin/firestore';
 
-export interface ActionResult<T = any> {
+export interface ActionResult<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
@@ -214,7 +214,7 @@ export async function listAdminProperties({
     // Verify admin access
     await requireAdmin();
     
-    let query = adminDb.collection('properties').orderBy('updatedAt', 'desc');
+    const query = adminDb.collection('properties').orderBy('updatedAt', 'desc');
     
     // Apply search filter if provided
     if (q.trim()) {

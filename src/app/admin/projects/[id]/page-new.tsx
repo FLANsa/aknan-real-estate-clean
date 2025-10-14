@@ -300,7 +300,7 @@ export default function ProjectManagementPage({ params }: ProjectManagementPageP
             <div className="text-center py-8 text-muted-foreground">
               <MapPin className="h-12 w-12 mx-auto mb-4" />
               <p>لا توجد قطع في هذا المشروع حتى الآن</p>
-              <p className="text-sm">ارسم قطعة على الخريطة أو اضغط على "إضافة قطعة جديدة"</p>
+              <p className="text-sm">ارسم قطعة على الخريطة أو اضغط على &quot;إضافة قطعة جديدة&quot;</p>
             </div>
           ) : (
             <Table>

@@ -8,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Search, Edit, Trash2, Eye } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
+
+export const dynamic = 'force-dynamic';
 import { ar } from 'date-fns/locale';
 import { PROPERTY_STATUS_LABELS, PROPERTY_TYPE_LABELS, CURRENCY_LABELS } from '@/types/property';
 
