@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "public": "out",
+    "public": "public",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -9,9 +9,26 @@
     "rewrites": [
       {
         "source": "**",
-        "destination": "/index.html"
+        "function": "nextjsServer"
+      }
+    ],
+    "headers": [
+      {
+        "source": "**/*.@(css|js|jpg|jpeg|gif|png|svg|woff|woff2)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
       }
     ]
+  },
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs20",
+    "memory": "1GiB",
+    "timeout": "60s"
   },
   "storage": {
     "rules": "storage.rules"

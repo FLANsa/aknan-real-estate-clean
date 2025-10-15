@@ -10,7 +10,13 @@ export async function uploadPropertyImage(file: File, propertyId: string): Promi
   // Try Firebase Storage first (preferred for production)
   try {
     console.log('🔄 Trying Firebase Storage upload...');
-    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+    const res = await fetch('/api/upload', { 
+      method: 'POST', 
+      headers: {
+        'Accept': 'application/json'
+      },
+      body: formData 
+    });
     if (res.ok) {
       const data = await res.json();
       console.log('✅ Firebase Storage upload successful:', data.url);
@@ -26,7 +32,13 @@ export async function uploadPropertyImage(file: File, propertyId: string): Promi
     // Fallback to local upload only in development
     if (process.env.NODE_ENV === 'development') {
       console.log('🔄 Trying local upload as fallback (development only)...');
-      const res = await fetch('/api/upload-local', { method: 'POST', body: formData });
+      const res = await fetch('/api/upload-local', { 
+        method: 'POST', 
+        headers: {
+          'Accept': 'application/json'
+        },
+        body: formData 
+      });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         console.error('❌ Local upload failed:', err);

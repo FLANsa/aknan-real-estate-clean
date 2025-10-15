@@ -1,0 +1,35 @@
+{
+  "node": {
+    "4004eb23dd4bd6651f8deae73f3986760d3c121c2f": {
+      "workers": {
+        "app/projects/[id]/page": {
+          "moduleId": "86746",
+          "async": true,
+          "exportedName": "getPublicProjectPlots",
+          "filename": "src/app/projects/[id]/actions.ts"
+        }
+      },
+      "layer": {
+        "app/projects/[id]/page": "rsc"
+      },
+      "exportedName": "getPublicProjectPlots",
+      "filename": "src/app/projects/[id]/actions.ts"
+    },
+    "40c7a652b0293261d6aa26d05a270f466aaf00ea59": {
+      "workers": {
+        "app/projects/[id]/page": {
+          "moduleId": "86746",
+          "async": true,
+          "exportedName": "getPublicProject",
+          "filename": "src/app/projects/[id]/actions.ts"
+        }
+      },
+      "layer": {
+        "app/projects/[id]/page": "rsc"
+      },
+      "exportedName": "getPublicProject",
+      "filename": "src/app/projects/[id]/actions.ts"
+    }
+  },
+  "edge": {}
+}

@@ -1,0 +1,50 @@
+{
+  "node": {
+    "40307625659fa94fd20fd32cbffdf1797e2888930f": {
+      "workers": {
+        "app/admin/properties/[id]/edit/page": {
+          "moduleId": "70534",
+          "async": true,
+          "exportedName": "getProperty",
+          "filename": "src/app/admin/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/properties/[id]/edit/page": "action-browser"
+      },
+      "exportedName": "getProperty",
+      "filename": "src/app/admin/actions.ts"
+    },
+    "6062741cf892647431c0274f4a4fbbdfbf0869499d": {
+      "workers": {
+        "app/admin/properties/[id]/edit/page": {
+          "moduleId": "70534",
+          "async": true,
+          "exportedName": "updateProperty",
+          "filename": "src/app/admin/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/properties/[id]/edit/page": "action-browser"
+      },
+      "exportedName": "updateProperty",
+      "filename": "src/app/admin/actions.ts"
+    },
+    "4003faa83b87cfe704c05fb4d94472f0948c37ca26": {
+      "workers": {
+        "app/admin/properties/[id]/edit/page": {
+          "moduleId": "70534",
+          "async": true,
+          "exportedName": "deleteProperty",
+          "filename": "src/app/admin/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/properties/[id]/edit/page": "action-browser"
+      },
+      "exportedName": "deleteProperty",
+      "filename": "src/app/admin/actions.ts"
+    }
+  },
+  "edge": {}
+}

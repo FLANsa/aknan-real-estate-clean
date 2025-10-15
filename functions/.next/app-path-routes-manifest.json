@@ -1,0 +1,22 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/about/page": "/about",
+  "/admin/page": "/admin",
+  "/admin/projects/[id]/page": "/admin/projects/[id]",
+  "/admin/projects/new/page": "/admin/projects/new",
+  "/admin/projects/page": "/admin/projects",
+  "/admin/properties/[id]/edit/page": "/admin/properties/[id]/edit",
+  "/admin/properties/new/page": "/admin/properties/new",
+  "/admin/properties/page": "/admin/properties",
+  "/api/auth/login/route": "/api/auth/login",
+  "/api/auth/logout/route": "/api/auth/logout",
+  "/api/upload/route": "/api/upload",
+  "/contact/page": "/contact",
+  "/favicon.ico/route": "/favicon.ico",
+  "/login/page": "/login",
+  "/map/page": "/map",
+  "/page": "/",
+  "/projects/[id]/page": "/projects/[id]",
+  "/properties/[slug]/page": "/properties/[slug]",
+  "/properties/page": "/properties"
+}

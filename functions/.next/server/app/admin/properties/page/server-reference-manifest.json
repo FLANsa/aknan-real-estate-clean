@@ -1,0 +1,95 @@
+{
+  "node": {
+    "4003faa83b87cfe704c05fb4d94472f0948c37ca26": {
+      "workers": {
+        "app/admin/properties/page": {
+          "moduleId": "93228",
+          "async": true,
+          "exportedName": "deleteProperty",
+          "filename": "src/app/admin/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/properties/page": "rsc"
+      },
+      "exportedName": "deleteProperty",
+      "filename": "src/app/admin/actions.ts"
+    },
+    "4007d9c77e3d65fd9b4a6b56546fa2039728e51603": {
+      "workers": {
+        "app/admin/properties/page": {
+          "moduleId": "93228",
+          "async": true,
+          "exportedName": "listAdminProperties",
+          "filename": "src/app/admin/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/properties/page": "rsc"
+      },
+      "exportedName": "listAdminProperties",
+      "filename": "src/app/admin/actions.ts"
+    },
+    "40307625659fa94fd20fd32cbffdf1797e2888930f": {
+      "workers": {
+        "app/admin/properties/page": {
+          "moduleId": "93228",
+          "async": true,
+          "exportedName": "getProperty",
+          "filename": "src/app/admin/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/properties/page": "rsc"
+      },
+      "exportedName": "getProperty",
+      "filename": "src/app/admin/actions.ts"
+    },
+    "40728a00713e0a8d961fd70d73d6d5610f7505508c": {
+      "workers": {
+        "app/admin/properties/page": {
+          "moduleId": "93228",
+          "async": true,
+          "exportedName": "createProperty",
+          "filename": "src/app/admin/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/properties/page": "rsc"
+      },
+      "exportedName": "createProperty",
+      "filename": "src/app/admin/actions.ts"
+    },
+    "40a3c87fe87607f422af880f1e9ba31c3c8f901026": {
+      "workers": {
+        "app/admin/properties/page": {
+          "moduleId": "93228",
+          "async": true,
+          "exportedName": "getPropertyBySlug",
+          "filename": "src/app/admin/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/properties/page": "rsc"
+      },
+      "exportedName": "getPropertyBySlug",
+      "filename": "src/app/admin/actions.ts"
+    },
+    "6062741cf892647431c0274f4a4fbbdfbf0869499d": {
+      "workers": {
+        "app/admin/properties/page": {
+          "moduleId": "93228",
+          "async": true,
+          "exportedName": "updateProperty",
+          "filename": "src/app/admin/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/properties/page": "rsc"
+      },
+      "exportedName": "updateProperty",
+      "filename": "src/app/admin/actions.ts"
+    }
+  },
+  "edge": {}
+}

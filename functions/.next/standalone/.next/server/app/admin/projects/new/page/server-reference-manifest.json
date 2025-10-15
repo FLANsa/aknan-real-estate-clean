@@ -1,0 +1,20 @@
+{
+  "node": {
+    "40d79af5cd5bbc25643e243d65435e3b936b2bcacb": {
+      "workers": {
+        "app/admin/projects/new/page": {
+          "moduleId": "31041",
+          "async": true,
+          "exportedName": "createProject",
+          "filename": "src/app/admin/projects/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/projects/new/page": "action-browser"
+      },
+      "exportedName": "createProject",
+      "filename": "src/app/admin/projects/actions.ts"
+    }
+  },
+  "edge": {}
+}

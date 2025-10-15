@@ -1,0 +1,318 @@
+{
+  "node": {
+    "4003faa83b87cfe704c05fb4d94472f0948c37ca26": {
+      "workers": {
+        "app/admin/properties/[id]/edit/page": {
+          "moduleId": "70534",
+          "async": true,
+          "exportedName": "deleteProperty",
+          "filename": "src/app/admin/actions.ts"
+        },
+        "app/admin/properties/page": {
+          "moduleId": "93228",
+          "async": true,
+          "exportedName": "deleteProperty",
+          "filename": "src/app/admin/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/properties/[id]/edit/page": "action-browser",
+        "app/admin/properties/page": "rsc"
+      },
+      "filename": "src/app/admin/actions.ts",
+      "exportedName": "deleteProperty"
+    },
+    "4007d9c77e3d65fd9b4a6b56546fa2039728e51603": {
+      "workers": {
+        "app/admin/properties/page": {
+          "moduleId": "93228",
+          "async": true,
+          "exportedName": "listAdminProperties",
+          "filename": "src/app/admin/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/properties/page": "rsc"
+      },
+      "filename": "src/app/admin/actions.ts",
+      "exportedName": "listAdminProperties"
+    },
+    "40307625659fa94fd20fd32cbffdf1797e2888930f": {
+      "workers": {
+        "app/admin/properties/[id]/edit/page": {
+          "moduleId": "70534",
+          "async": true,
+          "exportedName": "getProperty",
+          "filename": "src/app/admin/actions.ts"
+        },
+        "app/admin/properties/page": {
+          "moduleId": "93228",
+          "async": true,
+          "exportedName": "getProperty",
+          "filename": "src/app/admin/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/properties/[id]/edit/page": "action-browser",
+        "app/admin/properties/page": "rsc"
+      },
+      "filename": "src/app/admin/actions.ts",
+      "exportedName": "getProperty"
+    },
+    "40728a00713e0a8d961fd70d73d6d5610f7505508c": {
+      "workers": {
+        "app/admin/properties/new/page": {
+          "moduleId": "13670",
+          "async": true,
+          "exportedName": "createProperty",
+          "filename": "src/app/admin/actions.ts"
+        },
+        "app/admin/properties/page": {
+          "moduleId": "93228",
+          "async": true,
+          "exportedName": "createProperty",
+          "filename": "src/app/admin/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/properties/new/page": "action-browser",
+        "app/admin/properties/page": "rsc"
+      },
+      "filename": "src/app/admin/actions.ts",
+      "exportedName": "createProperty"
+    },
+    "40a3c87fe87607f422af880f1e9ba31c3c8f901026": {
+      "workers": {
+        "app/admin/properties/page": {
+          "moduleId": "93228",
+          "async": true,
+          "exportedName": "getPropertyBySlug",
+          "filename": "src/app/admin/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/properties/page": "rsc"
+      },
+      "filename": "src/app/admin/actions.ts",
+      "exportedName": "getPropertyBySlug"
+    },
+    "6062741cf892647431c0274f4a4fbbdfbf0869499d": {
+      "workers": {
+        "app/admin/properties/[id]/edit/page": {
+          "moduleId": "70534",
+          "async": true,
+          "exportedName": "updateProperty",
+          "filename": "src/app/admin/actions.ts"
+        },
+        "app/admin/properties/page": {
+          "moduleId": "93228",
+          "async": true,
+          "exportedName": "updateProperty",
+          "filename": "src/app/admin/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/properties/[id]/edit/page": "action-browser",
+        "app/admin/properties/page": "rsc"
+      },
+      "filename": "src/app/admin/actions.ts",
+      "exportedName": "updateProperty"
+    },
+    "00d1764dfb9eb85d0c105fa01ffb30d0596573f22e": {
+      "workers": {
+        "app/admin/projects/page": {
+          "moduleId": "80365",
+          "async": true,
+          "exportedName": "listProjects",
+          "filename": "src/app/admin/projects/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/projects/page": "rsc"
+      },
+      "filename": "src/app/admin/projects/actions.ts",
+      "exportedName": "listProjects"
+    },
+    "404d1d2720421da9fda113116438015d2ff4ee14d5": {
+      "workers": {
+        "app/admin/projects/page": {
+          "moduleId": "80365",
+          "async": true,
+          "exportedName": "deleteProject",
+          "filename": "src/app/admin/projects/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/projects/page": "rsc"
+      },
+      "filename": "src/app/admin/projects/actions.ts",
+      "exportedName": "deleteProject"
+    },
+    "40b8cabe640f45d0ff374ba39eef08ff3e3159366f": {
+      "workers": {
+        "app/admin/projects/[id]/page": {
+          "moduleId": "32126",
+          "async": true,
+          "exportedName": "getProject",
+          "filename": "src/app/admin/projects/actions.ts"
+        },
+        "app/admin/projects/page": {
+          "moduleId": "80365",
+          "async": true,
+          "exportedName": "getProject",
+          "filename": "src/app/admin/projects/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/projects/[id]/page": "action-browser",
+        "app/admin/projects/page": "rsc"
+      },
+      "filename": "src/app/admin/projects/actions.ts",
+      "exportedName": "getProject"
+    },
+    "40d79af5cd5bbc25643e243d65435e3b936b2bcacb": {
+      "workers": {
+        "app/admin/projects/new/page": {
+          "moduleId": "31041",
+          "async": true,
+          "exportedName": "createProject",
+          "filename": "src/app/admin/projects/actions.ts"
+        },
+        "app/admin/projects/page": {
+          "moduleId": "80365",
+          "async": true,
+          "exportedName": "createProject",
+          "filename": "src/app/admin/projects/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/projects/new/page": "action-browser",
+        "app/admin/projects/page": "rsc"
+      },
+      "filename": "src/app/admin/projects/actions.ts",
+      "exportedName": "createProject"
+    },
+    "6029d7553e0acce75c5c0845211ef4e9196035021a": {
+      "workers": {
+        "app/admin/projects/page": {
+          "moduleId": "80365",
+          "async": true,
+          "exportedName": "updateProject",
+          "filename": "src/app/admin/projects/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/projects/page": "rsc"
+      },
+      "filename": "src/app/admin/projects/actions.ts",
+      "exportedName": "updateProject"
+    },
+    "4082a1638e3b0c05ba67fe171c1f4a1b23b60ecb51": {
+      "workers": {
+        "app/admin/projects/[id]/page": {
+          "moduleId": "32126",
+          "async": true,
+          "exportedName": "getProjectPlots",
+          "filename": "src/app/admin/projects/[id]/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/projects/[id]/page": "action-browser"
+      },
+      "filename": "src/app/admin/projects/[id]/actions.ts",
+      "exportedName": "getProjectPlots"
+    },
+    "00c433db4a47e9fa754a1440b9b8af2979655f1666": {
+      "workers": {
+        "app/admin/projects/[id]/page": {
+          "moduleId": "32126",
+          "async": true,
+          "exportedName": "getAvailableProperties",
+          "filename": "src/app/admin/projects/[id]/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/projects/[id]/page": "action-browser"
+      },
+      "filename": "src/app/admin/projects/[id]/actions.ts",
+      "exportedName": "getAvailableProperties"
+    },
+    "40ebea0ff22de2082cf300ee15dc97984d62a4bd70": {
+      "workers": {
+        "app/admin/projects/[id]/page": {
+          "moduleId": "32126",
+          "async": true,
+          "exportedName": "createPlot",
+          "filename": "src/app/admin/projects/[id]/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/projects/[id]/page": "action-browser"
+      },
+      "filename": "src/app/admin/projects/[id]/actions.ts",
+      "exportedName": "createPlot"
+    },
+    "602d65432c66f285cc8112669f662fcaea7545e3cd": {
+      "workers": {
+        "app/admin/projects/[id]/page": {
+          "moduleId": "32126",
+          "async": true,
+          "exportedName": "updatePlot",
+          "filename": "src/app/admin/projects/[id]/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/projects/[id]/page": "action-browser"
+      },
+      "filename": "src/app/admin/projects/[id]/actions.ts",
+      "exportedName": "updatePlot"
+    },
+    "40a21f67a9d1a49cd1781a713893231176d8569125": {
+      "workers": {
+        "app/admin/projects/[id]/page": {
+          "moduleId": "32126",
+          "async": true,
+          "exportedName": "deletePlot",
+          "filename": "src/app/admin/projects/[id]/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/projects/[id]/page": "action-browser"
+      },
+      "filename": "src/app/admin/projects/[id]/actions.ts",
+      "exportedName": "deletePlot"
+    },
+    "4004eb23dd4bd6651f8deae73f3986760d3c121c2f": {
+      "workers": {
+        "app/projects/[id]/page": {
+          "moduleId": "86746",
+          "async": true,
+          "exportedName": "getPublicProjectPlots",
+          "filename": "src/app/projects/[id]/actions.ts"
+        }
+      },
+      "layer": {
+        "app/projects/[id]/page": "rsc"
+      },
+      "filename": "src/app/projects/[id]/actions.ts",
+      "exportedName": "getPublicProjectPlots"
+    },
+    "40c7a652b0293261d6aa26d05a270f466aaf00ea59": {
+      "workers": {
+        "app/projects/[id]/page": {
+          "moduleId": "86746",
+          "async": true,
+          "exportedName": "getPublicProject",
+          "filename": "src/app/projects/[id]/actions.ts"
+        }
+      },
+      "layer": {
+        "app/projects/[id]/page": "rsc"
+      },
+      "filename": "src/app/projects/[id]/actions.ts",
+      "exportedName": "getPublicProject"
+    }
+  },
+  "edge": {},
+  "encryptionKey": "Tuu6ItafE3HEvRtevNOxdOOgiJumd1lzqdevbBB6BCQ="
+}

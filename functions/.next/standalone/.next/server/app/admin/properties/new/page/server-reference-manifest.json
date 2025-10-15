@@ -1,0 +1,20 @@
+{
+  "node": {
+    "40728a00713e0a8d961fd70d73d6d5610f7505508c": {
+      "workers": {
+        "app/admin/properties/new/page": {
+          "moduleId": "13670",
+          "async": true,
+          "exportedName": "createProperty",
+          "filename": "src/app/admin/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/properties/new/page": "action-browser"
+      },
+      "exportedName": "createProperty",
+      "filename": "src/app/admin/actions.ts"
+    }
+  },
+  "edge": {}
+}

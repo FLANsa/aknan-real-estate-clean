@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Storage } from '@google-cloud/storage';
 import { v4 as uuidv4 } from 'uuid';
 
-export const runtime = 'nodejs'; // مهم لاستخدام Buffer/Streams
+// إجبار Node Runtime
+export const runtime = 'nodejs';
 
 const projectId = process.env.GOOGLE_CLOUD_PROJECT!;
 const bucketName = process.env.GCS_BUCKET!;
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
         clientEmail: !!clientEmail,
         privateKey: !!privateKey
       });
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+      return NextResponse.json({ ok: false, error: 'Server configuration error' }, { status: 500 });
     }
 
     const form = await req.formData();
@@ -35,11 +36,11 @@ export async function POST(req: NextRequest) {
 
     if (!file) {
       console.error('❌ No file provided');
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'No file provided' }, { status: 400 });
     }
     if (!propertyId) {
       console.error('❌ No propertyId provided');
-      return NextResponse.json({ error: 'No propertyId provided' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'No propertyId provided' }, { status: 400 });
     }
 
     console.log('📁 File info:', {
@@ -74,7 +75,7 @@ export async function POST(req: NextRequest) {
     const publicUrl = `https://storage.googleapis.com/${bucketName}/${filePath}`;
     console.log('✅ Upload successful:', publicUrl);
 
-    return NextResponse.json({ url: publicUrl, path: filePath });
+    return NextResponse.json({ ok: true, url: publicUrl, path: filePath });
   } catch (e: any) {
     console.error('❌ Upload error:', {
       message: e?.message,
@@ -84,6 +85,7 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json(
       {
+        ok: false,
         error: 'Failed to upload file',
         details: e?.message || 'Unknown error',
         code: e?.code || 'UNKNOWN_ERROR'
@@ -91,4 +93,8 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function GET() {
+  return NextResponse.json({ ok: true }, { status: 200 });
 }

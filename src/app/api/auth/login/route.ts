@@ -2,13 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth } from '@/lib/firebase/admin';
 import { isAdmin } from '@/lib/firebase/auth';
 
+// إجبار Node Runtime
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
   try {
-    const { idToken } = await request.json();
+    // التعامل مع JSON parsing بشكل آمن
+    const body = await request.json().catch(() => null);
+    
+    if (!body) {
+      return NextResponse.json(
+        { ok: false, error: 'Invalid JSON body' },
+        { status: 400 }
+      );
+    }
+
+    const { idToken } = body;
 
     if (!idToken) {
       return NextResponse.json(
-        { error: 'رمز المصادقة مطلوب' },
+        { ok: false, error: 'رمز المصادقة مطلوب' },
         { status: 400 }
       );
     }
@@ -25,13 +38,13 @@ export async function POST(request: NextRequest) {
 
     if (!isAdmin(user)) {
       return NextResponse.json(
-        { error: 'ليس لديك صلاحية للوصول إلى لوحة التحكم' },
+        { ok: false, error: 'ليس لديك صلاحية للوصول إلى لوحة التحكم' },
         { status: 403 }
       );
     }
 
     // Create response with httpOnly cookie
-    const response = NextResponse.json({ success: true });
+    const response = NextResponse.json({ ok: true, success: true });
     
     // Set httpOnly cookie with the ID token
     response.cookies.set('firebase-auth-token', idToken, {
@@ -42,13 +55,17 @@ export async function POST(request: NextRequest) {
     });
 
     return response;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Login API error:', error);
     return NextResponse.json(
-      { error: 'حدث خطأ أثناء تسجيل الدخول' },
+      { ok: false, error: error?.message ?? 'حدث خطأ أثناء تسجيل الدخول' },
       { status: 500 }
     );
   }
+}
+
+export async function GET() {
+  return NextResponse.json({ ok: true }, { status: 200 });
 }
 
 

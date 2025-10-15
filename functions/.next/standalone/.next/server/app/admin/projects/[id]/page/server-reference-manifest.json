@@ -1,0 +1,95 @@
+{
+  "node": {
+    "40b8cabe640f45d0ff374ba39eef08ff3e3159366f": {
+      "workers": {
+        "app/admin/projects/[id]/page": {
+          "moduleId": "32126",
+          "async": true,
+          "exportedName": "getProject",
+          "filename": "src/app/admin/projects/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/projects/[id]/page": "action-browser"
+      },
+      "exportedName": "getProject",
+      "filename": "src/app/admin/projects/actions.ts"
+    },
+    "4082a1638e3b0c05ba67fe171c1f4a1b23b60ecb51": {
+      "workers": {
+        "app/admin/projects/[id]/page": {
+          "moduleId": "32126",
+          "async": true,
+          "exportedName": "getProjectPlots",
+          "filename": "src/app/admin/projects/[id]/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/projects/[id]/page": "action-browser"
+      },
+      "exportedName": "getProjectPlots",
+      "filename": "src/app/admin/projects/[id]/actions.ts"
+    },
+    "00c433db4a47e9fa754a1440b9b8af2979655f1666": {
+      "workers": {
+        "app/admin/projects/[id]/page": {
+          "moduleId": "32126",
+          "async": true,
+          "exportedName": "getAvailableProperties",
+          "filename": "src/app/admin/projects/[id]/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/projects/[id]/page": "action-browser"
+      },
+      "exportedName": "getAvailableProperties",
+      "filename": "src/app/admin/projects/[id]/actions.ts"
+    },
+    "40ebea0ff22de2082cf300ee15dc97984d62a4bd70": {
+      "workers": {
+        "app/admin/projects/[id]/page": {
+          "moduleId": "32126",
+          "async": true,
+          "exportedName": "createPlot",
+          "filename": "src/app/admin/projects/[id]/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/projects/[id]/page": "action-browser"
+      },
+      "exportedName": "createPlot",
+      "filename": "src/app/admin/projects/[id]/actions.ts"
+    },
+    "602d65432c66f285cc8112669f662fcaea7545e3cd": {
+      "workers": {
+        "app/admin/projects/[id]/page": {
+          "moduleId": "32126",
+          "async": true,
+          "exportedName": "updatePlot",
+          "filename": "src/app/admin/projects/[id]/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/projects/[id]/page": "action-browser"
+      },
+      "exportedName": "updatePlot",
+      "filename": "src/app/admin/projects/[id]/actions.ts"
+    },
+    "40a21f67a9d1a49cd1781a713893231176d8569125": {
+      "workers": {
+        "app/admin/projects/[id]/page": {
+          "moduleId": "32126",
+          "async": true,
+          "exportedName": "deletePlot",
+          "filename": "src/app/admin/projects/[id]/actions.ts"
+        }
+      },
+      "layer": {
+        "app/admin/projects/[id]/page": "action-browser"
+      },
+      "exportedName": "deletePlot",
+      "filename": "src/app/admin/projects/[id]/actions.ts"
+    }
+  },
+  "edge": {}
+}
