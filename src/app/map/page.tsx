@@ -1,165 +1,325 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { Property } from '@/types/property';
+import { Plot } from '@/types/map';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MapPin, Search, Filter, Eye } from 'lucide-react';
-import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { MapPin, Home, Building, Phone, MessageCircle } from 'lucide-react';
+import GoogleMapsErrorHandler from '@/components/GoogleMapsErrorHandler';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { PROPERTY_TYPE_LABELS, PROPERTY_PURPOSE_LABELS, CURRENCY_LABELS } from '@/types/property';
 
-interface MapProperty extends Property {
-  lat?: number;
-  lng?: number;
+// إعدادات الخريطة
+const mapContainerStyle = {
+  width: '100%',
+  height: '70vh',
+};
+
+const defaultCenter = {
+  lat: 24.7136, // الرياض
+  lng: 46.6753,
+};
+
+const defaultZoom = 10;
+
+// أيقونات مختلفة للعقارات والمشاريع
+const getMarkerIcon = (type: 'property' | 'plot', status: string) => {
+  const colors = {
+    available: '#10B981', // أخضر
+    sold: '#EF4444', // أحمر
+    rented: '#F59E0B', // برتقالي
+    'off-market': '#6B7280', // رمادي
+  };
+  
+  const color = colors[status as keyof typeof colors] || '#10B981';
+  
+  return {
+    path: type === 'property' 
+      ? 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z'
+      : 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
+    fillColor: color,
+    fillOpacity: 1,
+    strokeColor: '#ffffff',
+    strokeWeight: 2,
+    scale: 1.5,
+  };
+};
+
+interface MapMarker {
+  id: string;
+  position: { lat: number; lng: number };
+  type: 'property' | 'plot';
+  data: Property | Plot;
+  title: string;
 }
 
 export default function PropertiesMapPage() {
-  const [properties, setProperties] = useState<MapProperty[]>([]);
-  const [filteredProperties, setFilteredProperties] = useState<MapProperty[]>([]);
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+    libraries: ['places'],
+  });
+
+  const [markers, setMarkers] = useState<MapMarker[]>([]);
+  const [selectedMarker, setSelectedMarker] = useState<MapMarker | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [purposeFilter, setPurposeFilter] = useState<string>('all');
-  const [selectedProperty, setSelectedProperty] = useState<MapProperty | null>(null);
+  const [mapCenter, setMapCenter] = useState(defaultCenter);
+  const [mapZoom, setMapZoom] = useState(defaultZoom);
 
-  // Fetch properties with coordinates
+  // جلب العقارات
+  const fetchProperties = useCallback(async () => {
+    try {
+      const q = query(
+        collection(db, 'properties'),
+        where('status', '==', 'available')
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const properties: Property[] = [];
+      
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        properties.push({
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate() || new Date(),
+          updatedAt: data.updatedAt?.toDate() || new Date(),
+        } as Property);
+      });
+      
+      return properties;
+    } catch (err) {
+      console.error('Error fetching properties:', err);
+      return [];
+    }
+  }, []);
+
+  // جلب القطع من المشاريع
+  const fetchPlots = useCallback(async () => {
+    try {
+      const q = query(collection(db, 'projects'));
+      const querySnapshot = await getDocs(q);
+      const plots: Plot[] = [];
+      
+      querySnapshot.forEach((projectDoc) => {
+        const projectData = projectDoc.data();
+        if (projectData.plots && Array.isArray(projectData.plots)) {
+          projectData.plots.forEach((plot: any) => {
+            if (plot.polygon && plot.polygon.length > 0) {
+              // حساب مركز القطعة من الـ polygon
+              const centerLat = plot.polygon.reduce((sum: number, point: any) => sum + point.lat, 0) / plot.polygon.length;
+              const centerLng = plot.polygon.reduce((sum: number, point: any) => sum + point.lng, 0) / plot.polygon.length;
+              
+              plots.push({
+                ...plot,
+                id: plot.id || `${projectDoc.id}-${plot.number}`,
+                projectId: projectDoc.id,
+                center: { lat: centerLat, lng: centerLng },
+              });
+            }
+          });
+        }
+      });
+      
+      return plots;
+    } catch (err) {
+      console.error('Error fetching plots:', err);
+      return [];
+    }
+  }, []);
+
+  // تحميل البيانات
   useEffect(() => {
-    async function fetchProperties() {
+    const loadData = async () => {
       try {
         setLoading(true);
         setError(null);
-
-        const q = query(
-          collection(db, 'properties'),
-          where('status', '==', 'available')
-        );
-
-        const querySnapshot = await getDocs(q);
-        const fetchedProperties: MapProperty[] = [];
-
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          const property = {
-            id: doc.id,
-            ...data,
-            createdAt: data.createdAt?.toDate() || new Date(),
-            updatedAt: data.updatedAt?.toDate() || new Date(),
-          } as MapProperty;
-
-          // Extract coordinates from location if available
-          if (data.location && typeof data.location === 'object') {
-            property.lat = data.location.lat;
-            property.lng = data.location.lng;
+        
+        const [properties, plots] = await Promise.all([
+          fetchProperties(),
+          fetchPlots(),
+        ]);
+        
+        const mapMarkers: MapMarker[] = [];
+        
+        // إضافة العقارات
+        properties.forEach((property) => {
+          if (property.location?.lat && property.location?.lng) {
+            mapMarkers.push({
+              id: property.id,
+              position: { lat: property.location.lat, lng: property.location.lng },
+              type: 'property',
+              data: property,
+              title: property.titleAr,
+            });
           }
-
-          fetchedProperties.push(property);
         });
-
-        setProperties(fetchedProperties);
-        setFilteredProperties(fetchedProperties);
+        
+        // إضافة القطع
+        plots.forEach((plot) => {
+          if (plot.center?.lat && plot.center?.lng) {
+            mapMarkers.push({
+              id: plot.id,
+              position: { lat: plot.center.lat, lng: plot.center.lng },
+              type: 'plot',
+              data: plot,
+              title: `القطعة ${plot.number}`,
+            });
+          }
+        });
+        
+        setMarkers(mapMarkers);
+        
+        // تحديث مركز الخريطة إذا كانت هناك بيانات
+        if (mapMarkers.length > 0) {
+          const bounds = new google.maps.LatLngBounds();
+          mapMarkers.forEach(marker => {
+            bounds.extend(marker.position);
+          });
+          
+          // يمكن إضافة fitBounds هنا إذا أردت
+        }
+        
       } catch (err) {
-        console.error('Error fetching properties:', err);
-        setError('فشل في تحميل العقارات');
+        console.error('Error loading map data:', err);
+        setError('فشل في تحميل بيانات الخريطة');
       } finally {
         setLoading(false);
       }
+    };
+    
+    if (isLoaded) {
+      loadData();
     }
+  }, [isLoaded, fetchProperties, fetchPlots]);
 
-    fetchProperties();
+  // معالجة النقر على الماركر
+  const handleMarkerClick = useCallback((marker: MapMarker) => {
+    setSelectedMarker(marker);
   }, []);
 
-  // Filter properties
-  useEffect(() => {
-    let filtered = properties;
+  // إغلاق نافذة المعلومات
+  const handleInfoWindowClose = useCallback(() => {
+    setSelectedMarker(null);
+  }, []);
 
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(property =>
-        property.titleAr.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        property.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        property.description?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
+  // عرض تفاصيل العقار
+  const renderPropertyInfo = (property: Property) => (
+    <div className="p-4 max-w-sm">
+      <div className="space-y-3">
+        <div className="flex items-start justify-between">
+          <h3 className="font-bold text-lg text-right">{property.titleAr}</h3>
+          <Badge variant={property.featured ? "default" : "secondary"}>
+            {property.featured ? "مميز" : property.status}
+          </Badge>
+        </div>
+        
+        <div className="text-sm text-muted-foreground space-y-1">
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4" />
+            <span>{property.city}</span>
+          </div>
+          
+          {property.areaM2 && (
+            <div className="flex items-center gap-2">
+              <Building className="h-4 w-4" />
+              <span>{property.areaM2} م²</span>
+            </div>
+          )}
+          
+          {property.bedrooms && (
+            <div className="flex items-center gap-2">
+              <Home className="h-4 w-4" />
+              <span>{property.bedrooms} غرف</span>
+            </div>
+          )}
+        </div>
+        
+        <div className="text-lg font-bold text-primary">
+          {property.price.toLocaleString()} {property.currency}
+        </div>
+        
+        <div className="flex gap-2">
+          <Button size="sm" asChild className="flex-1">
+            <a href={`/properties/${property.slug}`}>عرض التفاصيل</a>
+          </Button>
+          <Button size="sm" variant="outline" asChild>
+            <a href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP}?text=أريد الاستفسار عن العقار: ${property.titleAr}`} target="_blank" rel="noopener noreferrer">
+              <MessageCircle className="h-4 w-4" />
+            </a>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 
-    // Type filter
-    if (typeFilter !== 'all') {
-      filtered = filtered.filter(property => property.type === typeFilter);
-    }
+  // عرض تفاصيل القطعة
+  const renderPlotInfo = (plot: Plot) => (
+    <div className="p-4 max-w-sm">
+      <div className="space-y-3">
+        <div className="flex items-start justify-between">
+          <h3 className="font-bold text-lg text-right">القطعة {plot.number}</h3>
+          <Badge variant={plot.status === 'available' ? "default" : "secondary"}>
+            {plot.status}
+          </Badge>
+        </div>
+        
+        <div className="text-sm text-muted-foreground space-y-1">
+          {plot.area && (
+            <div className="flex items-center gap-2">
+              <Building className="h-4 w-4" />
+              <span>{plot.area} م²</span>
+            </div>
+          )}
+          
+          {plot.price && (
+            <div className="text-lg font-bold text-primary">
+              {plot.price.toLocaleString()} {plot.currency}
+            </div>
+          )}
+          
+          {plot.notes && (
+            <p className="text-sm">{plot.notes}</p>
+          )}
+        </div>
+        
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" asChild>
+            <a href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP}?text=أريد الاستفسار عن القطعة: ${plot.number}`} target="_blank" rel="noopener noreferrer">
+              <MessageCircle className="h-4 w-4" />
+            </a>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 
-    // Purpose filter
-    if (purposeFilter !== 'all') {
-      filtered = filtered.filter(property => property.purpose === purposeFilter);
-    }
-
-    setFilteredProperties(filtered);
-  }, [properties, searchTerm, typeFilter, purposeFilter]);
-
-  const formatPrice = (price: number, currency: string) => {
-    return new Intl.NumberFormat('ar-SA', {
-      style: 'currency',
-      currency: currency === 'SAR' ? 'SAR' : 'USD',
-      minimumFractionDigits: 0,
-    }).format(price);
-  };
-
-  const getPropertyTypeLabel = (type: string) => {
-    return PROPERTY_TYPE_LABELS[type as keyof typeof PROPERTY_TYPE_LABELS] || type;
-  };
-
-  const getPropertyPurposeLabel = (purpose: string) => {
-    return PROPERTY_PURPOSE_LABELS[purpose as keyof typeof PROPERTY_PURPOSE_LABELS] || purpose;
-  };
-
-  if (loading) {
+  if (loadError) {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
-        <main className="flex-1 py-16">
-          <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center space-y-4 mb-12">
-              <h1 className="text-3xl font-bold">خارطة العقارات</h1>
-              <p className="text-muted-foreground">جاري تحميل العقارات...</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="bg-card rounded-lg border p-6 space-y-4 animate-pulse">
-                  <div className="aspect-video bg-muted rounded-lg"></div>
-                  <div className="space-y-2">
-                    <div className="h-6 bg-muted rounded w-3/4"></div>
-                    <div className="h-4 bg-muted rounded w-1/2"></div>
-                    <div className="flex justify-between items-center">
-                      <div className="h-6 bg-muted rounded w-1/3"></div>
-                      <div className="h-6 bg-muted rounded w-1/4"></div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+        <main className="flex-1 flex items-center justify-center">
+          <GoogleMapsErrorHandler error={loadError} />
         </main>
         <Footer />
       </div>
     );
   }
 
-  if (error) {
+  if (!isLoaded || loading) {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
-        <main className="flex-1 py-16">
-          <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div className="text-destructive text-lg">{error}</div>
-            <Button onClick={() => window.location.reload()} className="mt-4">
-              إعادة المحاولة
-            </Button>
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="text-muted-foreground">جاري تحميل الخريطة العقارية...</p>
           </div>
         </main>
         <Footer />
@@ -171,200 +331,120 @@ export default function PropertiesMapPage() {
     <div className="min-h-screen flex flex-col">
       <Header />
       
-      <main className="flex-1 py-8">
-        <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="text-center space-y-4 mb-8">
-            <h1 className="text-3xl font-bold">خارطة العقارات</h1>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              اكتشف جميع العقارات المتاحة لدينا في مواقعها الجغرافية
+      <main className="flex-1">
+        {/* Header Section */}
+        <section className="bg-primary text-primary-foreground py-12">
+          <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">
+              خريطتنا العقارية
+            </h1>
+            <p className="text-xl text-primary-foreground/90 max-w-3xl mx-auto">
+              اكتشف جميع العقارات والمشاريع المتاحة لدينا على الخريطة التفاعلية
             </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <span>متاح</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                <span>مباع</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                <span>مؤجر</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
+                <span>غير متاح</span>
+              </div>
+            </div>
           </div>
+        </section>
 
-          {/* Filters */}
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Filter className="h-5 w-5" />
-                فلاتر البحث
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">البحث</label>
-                  <div className="relative">
-                    <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="ابحث بالعنوان أو المدينة..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pr-10"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">نوع العقار</label>
-                  <Select value={typeFilter} onValueChange={setTypeFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="جميع الأنواع" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">جميع الأنواع</SelectItem>
-                      {Object.entries(PROPERTY_TYPE_LABELS).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">الغرض</label>
-                  <Select value={purposeFilter} onValueChange={setPurposeFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="جميع الأغراض" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">جميع الأغراض</SelectItem>
-                      {Object.entries(PROPERTY_PURPOSE_LABELS).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">النتائج</label>
-                  <div className="flex items-center justify-center h-10 px-3 py-2 border rounded-md bg-muted">
-                    <span className="text-sm font-medium">
-                      {filteredProperties.length} عقار
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Properties Grid */}
-          {filteredProperties.length === 0 ? (
-            <div className="text-center py-16">
-              <MapPin className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">لا توجد عقارات</h3>
-              <p className="text-muted-foreground">
-                لم يتم العثور على عقارات تطابق معايير البحث
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredProperties.map((property) => (
-                <Card key={property.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                  <div className="aspect-[4/3] relative">
-                    <img
-                      src={property.images?.[0] || '/placeholder-property.jpg'}
-                      alt={property.titleAr}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = '/placeholder-property.jpg';
-                      }}
-                    />
-                    {property.featured && (
-                      <Badge className="absolute top-2 right-2 bg-yellow-500 hover:bg-yellow-500">
-                        مميز
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  <CardContent className="p-4">
-                    <div className="space-y-3">
-                      <div>
-                        <h3 className="font-semibold text-lg line-clamp-2">
-                          {property.titleAr}
-                        </h3>
-                        <div className="flex items-center text-sm text-muted-foreground mt-1">
-                          <MapPin className="h-4 w-4 ml-1" />
-                          {property.city}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="text-2xl font-bold text-primary">
-                          {formatPrice(property.price, property.currency)}
-                        </div>
-                        <div className="text-right">
-                          <Badge variant="secondary" className="mb-1">
-                            {getPropertyTypeLabel(property.type)}
-                          </Badge>
-                          <div className="text-xs text-muted-foreground">
-                            {getPropertyPurposeLabel(property.purpose)}
-                          </div>
-                        </div>
-                      </div>
-
-                      {property.areaM2 && (
-                        <div className="flex items-center justify-between text-sm text-muted-foreground">
-                          <span>المساحة: {property.areaM2} م²</span>
-                          {property.bedrooms && (
-                            <span>{property.bedrooms} غرف</span>
-                          )}
-                        </div>
-                      )}
-
-                      <div className="flex gap-2 pt-2">
-                        <Button asChild className="flex-1">
-                          <Link href={`/properties/${property.slug}`}>
-                            <Eye className="h-4 w-4 ml-2" />
-                            عرض التفاصيل
-                          </Link>
-                        </Button>
-                        {property.lat && property.lng && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const url = `https://www.google.com/maps?q=${property.lat},${property.lng}`;
-                              window.open(url, '_blank');
-                            }}
-                          >
-                            <MapPin className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          {/* Map Info */}
-          <Card className="mt-8">
-            <CardContent className="p-6">
-              <div className="text-center space-y-4">
-                <MapPin className="h-12 w-12 text-primary mx-auto" />
-                <h3 className="text-xl font-semibold">خارطة تفاعلية</h3>
-                <p className="text-muted-foreground max-w-2xl mx-auto">
-                  يمكنك النقر على أيقونة الخريطة بجانب كل عقار لعرض موقعه على خرائط جوجل
+        {/* Map Section */}
+        <section className="py-8">
+          <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-center">
+                  خريطة العقارات والمشاريع
+                </CardTitle>
+                <p className="text-center text-muted-foreground">
+                  اضغط على أي علامة لعرض التفاصيل
                 </p>
-                <div className="flex flex-wrap justify-center gap-4 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                    <span>عقار مميز</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                    <span>عقار عادي</span>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="relative">
+                  <GoogleMap
+                    mapContainerStyle={mapContainerStyle}
+                    center={mapCenter}
+                    zoom={mapZoom}
+                    options={{
+                      disableDefaultUI: false,
+                      zoomControl: true,
+                      streetViewControl: false,
+                      mapTypeControl: true,
+                      fullscreenControl: true,
+                    }}
+                  >
+                    {markers.map((marker) => (
+                      <Marker
+                        key={marker.id}
+                        position={marker.position}
+                        title={marker.title}
+                        icon={getMarkerIcon(marker.type, marker.data.status)}
+                        onClick={() => handleMarkerClick(marker)}
+                      />
+                    ))}
+                    
+                    {selectedMarker && (
+                      <InfoWindow
+                        position={selectedMarker.position}
+                        onCloseClick={handleInfoWindowClose}
+                      >
+                        {selectedMarker.type === 'property' 
+                          ? renderPropertyInfo(selectedMarker.data as Property)
+                          : renderPlotInfo(selectedMarker.data as Plot)
+                        }
+                      </InfoWindow>
+                    )}
+                  </GoogleMap>
+                  
+                  {/* Map Stats */}
+                  <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg p-4 shadow-lg">
+                    <div className="text-sm space-y-1">
+                      <div className="font-semibold">إحصائيات الخريطة</div>
+                      <div>العقارات: {markers.filter(m => m.type === 'property').length}</div>
+                      <div>القطع: {markers.filter(m => m.type === 'plot').length}</div>
+                      <div>المجموع: {markers.length}</div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+
+        {/* Call to Action */}
+        <section className="py-16 bg-muted/50">
+          <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 className="text-3xl font-bold mb-4">
+              لم تجد ما تبحث عنه؟
+            </h2>
+            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+              تواصل معنا وسنساعدك في العثور على العقار المثالي
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button asChild size="lg" className="text-lg px-8 py-4">
+                <a href="/properties">تصفح جميع العقارات</a>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="text-lg px-8 py-4">
+                <a href="/contact">تواصل معنا</a>
+              </Button>
+            </div>
+          </div>
+        </section>
       </main>
       
       <Footer />

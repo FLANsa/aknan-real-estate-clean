@@ -19,6 +19,7 @@ export interface Plot {
   price: number;
   currency: Currency;
   polygon: Coordinates[]; // vertices of the polygon
+  center?: Coordinates; // center coordinates for map display
   dimensions: PlotDimensions;
   notes?: string;
   propertyId?: string; // bidirectional link to property
