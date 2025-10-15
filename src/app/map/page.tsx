@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Polygon } from '@react-google-maps/api';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { Property } from '@/types/property';
@@ -27,8 +27,8 @@ const defaultCenter = {
 
 const defaultZoom = 10;
 
-// أيقونات مختلفة للعقارات والمشاريع
-const getMarkerIcon = (type: 'property' | 'plot', status: string) => {
+// أيقونات مختلفة للعقارات
+const getMarkerIcon = (status: string) => {
   const colors = {
     available: '#10B981', // أخضر
     sold: '#EF4444', // أحمر
@@ -39,15 +39,39 @@ const getMarkerIcon = (type: 'property' | 'plot', status: string) => {
   const color = colors[status as keyof typeof colors] || '#10B981';
   
   return {
-    path: type === 'property' 
-      ? 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z'
-      : 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
+    path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z',
     fillColor: color,
     fillOpacity: 1,
     strokeColor: '#ffffff',
     strokeWeight: 2,
     scale: 1.5,
   };
+};
+
+// ألوان القطع حسب حالتها
+const getPlotColors = (status: string) => {
+  const colors = {
+    available: {
+      fillColor: '#22c55e', // أخضر
+      strokeColor: '#16a34a',
+      fillOpacity: 0.3,
+      strokeWeight: 2,
+    },
+    sold: {
+      fillColor: '#ef4444', // أحمر
+      strokeColor: '#dc2626',
+      fillOpacity: 0.3,
+      strokeWeight: 2,
+    },
+    reserved: {
+      fillColor: '#eab308', // أصفر
+      strokeColor: '#ca8a04',
+      fillOpacity: 0.3,
+      strokeWeight: 2,
+    },
+  };
+  
+  return colors[status as keyof typeof colors] || colors.available;
 };
 
 interface MapMarker {
@@ -209,6 +233,18 @@ export default function PropertiesMapPage() {
     setSelectedMarker(marker);
   }, []);
 
+  // معالجة النقر على القطعة
+  const handlePlotClick = useCallback((plot: Plot) => {
+    const marker: MapMarker = {
+      id: plot.id,
+      position: plot.center || { lat: 0, lng: 0 },
+      type: 'plot',
+      data: plot,
+      title: `القطعة ${plot.number}`,
+    };
+    setSelectedMarker(marker);
+  }, []);
+
   // إغلاق نافذة المعلومات
   const handleInfoWindowClose = useCallback(() => {
     setSelectedMarker(null);
@@ -346,22 +382,27 @@ export default function PropertiesMapPage() {
             <p className="text-xl text-primary-foreground/90 max-w-3xl mx-auto">
               اكتشف جميع العقارات والمشاريع المتاحة لدينا على الخريطة التفاعلية
             </p>
-            <div className="mt-6 flex flex-wrap justify-center gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <span>متاح</span>
+            <div className="mt-6 space-y-4">
+              <div className="text-center">
+                <h3 className="font-semibold mb-2">مفتاح الألوان</h3>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                <span>مباع</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                <span>مؤجر</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
-                <span>غير متاح</span>
+              <div className="flex flex-wrap justify-center gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
+                  <span>العقارات</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-green-500 rounded-full"></div>
+                  <span>قطع متاحة</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-red-500 rounded-full"></div>
+                  <span>قطع مباعة</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-yellow-500 rounded-full"></div>
+                  <span>قطع محجوزة</span>
+                </div>
               </div>
             </div>
           </div>
@@ -393,15 +434,33 @@ export default function PropertiesMapPage() {
                       fullscreenControl: true,
                     }}
                   >
-                    {markers.map((marker) => (
+                    {/* عرض العقارات كـ markers */}
+                    {markers.filter(marker => marker.type === 'property').map((marker) => (
                       <Marker
                         key={marker.id}
                         position={marker.position}
                         title={marker.title}
-                        icon={getMarkerIcon(marker.type, marker.data.status)}
+                        icon={getMarkerIcon(marker.data.status)}
                         onClick={() => handleMarkerClick(marker)}
                       />
                     ))}
+                    
+                    {/* عرض القطع كـ polygons */}
+                    {markers.filter(marker => marker.type === 'plot').map((marker) => {
+                      const plot = marker.data as Plot;
+                      const colors = getPlotColors(plot.status);
+                      return (
+                        <Polygon
+                          key={marker.id}
+                          paths={plot.polygon}
+                          options={{
+                            ...colors,
+                            clickable: true,
+                          }}
+                          onClick={() => handlePlotClick(plot)}
+                        />
+                      );
+                    })}
                     
                     {selectedMarker && (
                       <InfoWindow
@@ -418,11 +477,26 @@ export default function PropertiesMapPage() {
                   
                   {/* Map Stats */}
                   <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg p-4 shadow-lg">
-                    <div className="text-sm space-y-1">
-                      <div className="font-semibold">إحصائيات الخريطة</div>
-                      <div>العقارات: {markers.filter(m => m.type === 'property').length}</div>
-                      <div>القطع: {markers.filter(m => m.type === 'plot').length}</div>
-                      <div>المجموع: {markers.length}</div>
+                    <div className="text-sm space-y-2">
+                      <div className="font-semibold text-center">إحصائيات الخريطة</div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                          <span>العقارات: {markers.filter(m => m.type === 'property').length}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                          <span>القطع المتاحة: {markers.filter(m => m.type === 'plot' && m.data.status === 'available').length}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                          <span>القطع المباعة: {markers.filter(m => m.type === 'plot' && m.data.status === 'sold').length}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                          <span>القطع المحجوزة: {markers.filter(m => m.type === 'plot' && m.data.status === 'reserved').length}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
