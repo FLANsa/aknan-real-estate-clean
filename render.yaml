@@ -3,69 +3,30 @@ services:
     name: aknan-real-estate
     env: node
     plan: free
-    buildCommand: npm install && npm run build
-    startCommand: npm start
+    buildCommand: npm ci && npm run build
+    startCommand: node server.js
     envVars:
-      - key: NODE_ENV
-        value: production
       - key: NEXT_PUBLIC_FIREBASE_API_KEY
-        fromService:
-          type: web
-          name: aknan-real-estate
-          envVarKey: NEXT_PUBLIC_FIREBASE_API_KEY
+        value: AIzaSyC4X7KX14u61IhcxnSXPHaEwpqDxiQBuMo
       - key: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-        fromService:
-          type: web
-          name: aknan-real-estate
-          envVarKey: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+        value: aknanalkimma-1d85c.firebaseapp.com
       - key: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-        fromService:
-          type: web
-          name: aknan-real-estate
-          envVarKey: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+        value: aknanalkimma-1d85c
       - key: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-        fromService:
-          type: web
-          name: aknan-real-estate
-          envVarKey: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+        value: aknanalkimma-1d85c.firebasestorage.app
       - key: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-        fromService:
-          type: web
-          name: aknan-real-estate
-          envVarKey: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+        value: 33443406347
       - key: NEXT_PUBLIC_FIREBASE_APP_ID
-        fromService:
-          type: web
-          name: aknan-real-estate
-          envVarKey: NEXT_PUBLIC_FIREBASE_APP_ID
+        value: 1:33443406347:web:fbfd24eb2ddf591d5f5d0e
+      - key: NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+        value: G-CN8FK81S3K
       - key: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-        fromService:
-          type: web
-          name: aknan-real-estate
-          envVarKey: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-      - key: FIREBASE_ADMIN_PRIVATE_KEY
-        fromService:
-          type: web
-          name: aknan-real-estate
-          envVarKey: FIREBASE_ADMIN_PRIVATE_KEY
-      - key: FIREBASE_ADMIN_CLIENT_EMAIL
-        fromService:
-          type: web
-          name: aknan-real-estate
-          envVarKey: FIREBASE_ADMIN_CLIENT_EMAIL
+        value: AIzaSyALKolr0_4M_Oypgk_8fb0ekpBwsYOCEXI
       - key: ADMIN_EMAILS
-        fromService:
-          type: web
-          name: aknan-real-estate
-          envVarKey: ADMIN_EMAILS
+        value: admin@aknan.sa
+      - key: NEXT_PUBLIC_WHATSAPP
+        value: 9665XXXXXXX
       - key: GOOGLE_CLOUD_PROJECT
-        fromService:
-          type: web
-          name: aknan-real-estate
-          envVarKey: GOOGLE_CLOUD_PROJECT
+        value: aknanalkimma-1d85c
       - key: GCS_BUCKET
-        fromService:
-          type: web
-          name: aknan-real-estate
-          envVarKey: GCS_BUCKET
-
+        value: aknanalkimma-1d85c.firebasestorage.app
