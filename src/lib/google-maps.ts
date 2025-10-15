@@ -145,3 +145,4 @@ export const isPointInPolygon = (point: Coordinates, polygon: Coordinates[]): bo
 
   return inside;
 };
+

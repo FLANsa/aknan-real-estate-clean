@@ -31,37 +31,53 @@ export const propertySchema = z.object({
     errorMap: () => ({ message: 'نوع العقار مطلوب' })
   }),
   
-  areaM2: z.number()
-    .min(1, 'المساحة يجب أن تكون أكبر من 0')
-    .max(100000, 'المساحة كبيرة جداً')
-    .transform(val => isNaN(val) ? undefined : val)
-    .optional(),
+  areaM2: z.preprocess(
+    (val) => {
+      const num = Number(val);
+      return isNaN(num) || num === 0 ? undefined : num;
+    },
+    z.number()
+      .min(1, 'المساحة يجب أن تكون أكبر من 0')
+      .max(100000, 'المساحة كبيرة جداً')
+      .optional()
+  ),
   
-  bedrooms: z.number()
-    .min(0, 'عدد غرف النوم لا يمكن أن يكون سالباً')
-    .max(50, 'عدد غرف النوم كبير جداً')
-    .transform(val => isNaN(val) ? undefined : val)
-    .optional(),
+  bedrooms: z.preprocess(
+    (val) => {
+      const num = Number(val);
+      return isNaN(num) || num === 0 ? undefined : num;
+    },
+    z.number()
+      .min(1, 'عدد غرف النوم يجب أن يكون أكبر من 0')
+      .max(50, 'عدد غرف النوم كبير جداً')
+      .optional()
+  ),
   
-  bathrooms: z.number()
-    .min(0, 'عدد دورات المياه لا يمكن أن يكون سالباً')
-    .max(20, 'عدد دورات المياه كبير جداً')
-    .transform(val => isNaN(val) ? undefined : val)
-    .optional(),
+  bathrooms: z.preprocess(
+    (val) => {
+      const num = Number(val);
+      return isNaN(num) || num === 0 ? undefined : num;
+    },
+    z.number()
+      .min(1, 'عدد دورات المياه يجب أن يكون أكبر من 0')
+      .max(20, 'عدد دورات المياه كبير جداً')
+      .optional()
+  ),
   
-  floor: z.number()
-    .min(-5, 'رقم الطابق غير صحيح')
-    .max(200, 'رقم الطابق كبير جداً')
-    .transform(val => isNaN(val) ? undefined : val)
-    .optional(),
+  floor: z.preprocess(
+    (val) => {
+      const num = Number(val);
+      return isNaN(num) ? undefined : num;
+    },
+    z.number()
+      .min(-5, 'رقم الطابق غير صحيح')
+      .max(200, 'رقم الطابق كبير جداً')
+      .optional()
+  ),
   
   price: z.number()
     .min(1, 'السعر مطلوب')
     .max(1000000000, 'السعر كبير جداً'),
-  
-  currency: z.enum(['SAR', 'USD'], {
-    errorMap: () => ({ message: 'العملة مطلوبة (ريال أو دولار)' })
-  }),
   
   status: z.enum(['available', 'sold', 'rented', 'off-market'], {
     errorMap: () => ({ message: 'حالة العقار مطلوبة' })
@@ -71,11 +87,16 @@ export const propertySchema = z.object({
     .max(20, 'لا يمكن إضافة أكثر من 20 ميزة')
     .optional(),
   
-  yearBuilt: z.number()
-    .min(1800, 'سنة البناء غير صحيحة')
-    .max(new Date().getFullYear() + 5, 'سنة البناء في المستقبل')
-    .transform(val => isNaN(val) ? undefined : val)
-    .optional(),
+  yearBuilt: z.preprocess(
+    (val) => {
+      const num = Number(val);
+      return isNaN(num) || num === 0 ? undefined : num;
+    },
+    z.number()
+      .min(1800, 'سنة البناء غير صحيحة')
+      .max(new Date().getFullYear() + 5, 'سنة البناء في المستقبل')
+      .optional()
+  ),
   
   lat: z.number()
     .min(-90, 'خط العرض غير صحيح')
@@ -97,6 +118,9 @@ export const propertySchema = z.object({
 });
 
 export type PropertyFormData = z.infer<typeof propertySchema>;
+
+// Form data without currency (for new property form)
+export type PropertyFormDataWithoutCurrency = Omit<PropertyFormData, 'currency'>;
 
 // Validation schema for property filters
 export const propertyFiltersSchema = z.object({

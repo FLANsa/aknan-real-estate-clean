@@ -28,8 +28,6 @@ const nextConfig: NextConfig = {
     ],
     // السماح بعرض الصور المحلية
     unoptimized: false,
-    // إضافة مسارات محلية للصور
-    domains: ['localhost'],
   },
 };
 

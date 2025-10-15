@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { propertySchema, PropertyFormData } from '@/lib/schemas/property';
+import { propertySchema, PropertyFormDataWithoutCurrency } from '@/lib/schemas/property';
 import { createProperty } from '@/app/admin/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Save } from 'lucide-react';
 import ImageUploader from '@/components/ImageUploader';
-import { PROPERTY_PURPOSE_LABELS, PROPERTY_TYPE_LABELS, PROPERTY_STATUS_LABELS, CURRENCY_LABELS } from '@/types/property';
+import { PROPERTY_PURPOSE_LABELS, PROPERTY_TYPE_LABELS, PROPERTY_STATUS_LABELS } from '@/types/property';
 
 export default function NewPropertyPage() {
   const [images, setImages] = useState<string[]>([]);
@@ -30,7 +30,7 @@ export default function NewPropertyPage() {
     setValue,
     watch,
     formState: { errors },
-  } = useForm<PropertyFormData>({
+  } = useForm<PropertyFormDataWithoutCurrency>({
     resolver: zodResolver(propertySchema),
     defaultValues: {
       titleAr: '',
@@ -38,7 +38,6 @@ export default function NewPropertyPage() {
       price: 0,
       purpose: 'sale',
       type: 'apartment',
-      currency: 'SAR',
       status: 'available',
       featured: false,
       images: [],
@@ -46,13 +45,14 @@ export default function NewPropertyPage() {
   });
 
 
-  const onSubmit = async (data: PropertyFormData) => {
+  const onSubmit = async (data: PropertyFormDataWithoutCurrency) => {
     setIsSubmitting(true);
     setError('');
 
     try {
       const formData = {
         ...data,
+        currency: 'SAR' as const, // إضافة العملة تلقائياً
         images,
       };
 
@@ -227,24 +227,6 @@ export default function NewPropertyPage() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="currency">العملة *</Label>
-                <Select onValueChange={(value) => setValue('currency', value as any)}>
-                  <SelectTrigger id="currency">
-                    <SelectValue placeholder="اختر العملة" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(CURRENCY_LABELS).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.currency && (
-                  <p className="text-sm text-destructive">{errors.currency.message}</p>
-                )}
-              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

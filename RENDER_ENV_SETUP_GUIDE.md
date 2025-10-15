@@ -115,3 +115,4 @@ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = AIzaSyALKolr0_4M_Oypgk_8fb0ekpBwsYOCEXI
 1. مراجعة logs الخدمة في Render Dashboard
 2. التحقق من متغيرات البيئة مرة أخرى
 3. إعادة تشغيل الخدمة
+

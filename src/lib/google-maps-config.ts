@@ -29,3 +29,4 @@ export const SAUDI_CITIES = [
   { name: 'المدينة', lat: 24.5247, lng: 39.5692 },
   { name: 'الدمام', lat: 26.4207, lng: 50.0888 },
 ] as const;
+

@@ -17,7 +17,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Loader2, Save, Trash2 } from 'lucide-react';
 import ImageUploader from '@/components/ImageUploader';
-import { PROPERTY_PURPOSE_LABELS, PROPERTY_TYPE_LABELS, PROPERTY_STATUS_LABELS, CURRENCY_LABELS } from '@/types/property';
+import { PROPERTY_PURPOSE_LABELS, PROPERTY_TYPE_LABELS, PROPERTY_STATUS_LABELS } from '@/types/property';
 
 interface EditPropertyPageProps {
   params: {
@@ -68,7 +68,7 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
             bathrooms: property.bathrooms,
             floor: property.floor,
             price: property.price,
-            currency: property.currency,
+            currency: property.currency || 'SAR',
             status: property.status,
             features: property.features,
             yearBuilt: property.yearBuilt,
@@ -329,24 +329,6 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="currency">العملة *</Label>
-                <Select onValueChange={(value) => setValue('currency', value as any)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="اختر العملة" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(CURRENCY_LABELS).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.currency && (
-                  <p className="text-sm text-destructive">{errors.currency.message}</p>
-                )}
-              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

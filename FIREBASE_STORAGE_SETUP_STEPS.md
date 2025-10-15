@@ -76,3 +76,4 @@ curl -X POST -F "file=@public/placeholder-property.jpg" -F "propertyId=test-123"
 - ✅ الصور تظهر بسرعة
 - ✅ روابط عامة للصور
 - ✅ لا حاجة للرفع المحلي
+

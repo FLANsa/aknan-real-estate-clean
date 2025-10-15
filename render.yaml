@@ -68,3 +68,4 @@ services:
           type: web
           name: aknan-real-estate
           envVarKey: GCS_BUCKET
+

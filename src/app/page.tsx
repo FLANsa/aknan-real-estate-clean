@@ -1,5 +1,6 @@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import FeaturedPropertiesCarousel from "@/components/FeaturedPropertiesCarousel";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
@@ -57,40 +58,8 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Featured Properties Placeholder */}
-        <section className="py-16">
-          <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div className="text-center space-y-4 mb-12">
-              <h2 className="text-3xl font-bold">العقارات المميزة</h2>
-              <p className="text-muted-foreground max-w-2xl mx-auto">
-                اكتشف مجموعة مختارة من أفضل العقارات المتاحة لدينا
-              </p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-center">
-              {/* Placeholder cards - will be replaced with real data later */}
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="bg-card rounded-lg border p-6 space-y-4">
-                  <div className="aspect-video bg-muted rounded-lg"></div>
-                  <div className="space-y-2">
-                    <h3 className="font-semibold">فيلا فاخرة في الرياض</h3>
-                    <p className="text-sm text-muted-foreground">الملقا، الرياض</p>
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg font-bold text-primary">3,500,000 ريال</span>
-                      <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded">متاح</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            <div className="text-center mt-8">
-              <Button asChild size="lg">
-                <Link href="/properties">عرض جميع العقارات</Link>
-              </Button>
-            </div>
-        </div>
-        </section>
+        {/* Featured Properties Carousel */}
+        <FeaturedPropertiesCarousel />
       </main>
       
       <Footer />

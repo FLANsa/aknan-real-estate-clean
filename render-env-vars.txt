@@ -24,7 +24,7 @@ NEXT_PUBLIC_SITE_URL=https://your-render-url.onrender.com
 
 # 5. Google Cloud Storage
 GOOGLE_CLOUD_PROJECT=aknanalkimma-1d85c
-GCS_BUCKET=aknanalkimma-1d85c.appspot.com
+GCS_BUCKET=aknanalkimma-1d85c.firebasestorage.app
 
 # 6. Google Maps API
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=AIzaSyALKolr0_4M_Oypgk_8fb0ekpBwsYOCEXI
