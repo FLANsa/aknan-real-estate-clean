@@ -60,9 +60,9 @@ interface MapMarker {
 
 export default function PropertiesMapPage() {
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script',
+    id: 'interactive-map-loader',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-    libraries: ['places'],
+    libraries: ['drawing', 'geometry', 'places'],
   });
 
   const [markers, setMarkers] = useState<MapMarker[]>([]);
@@ -100,29 +100,34 @@ export default function PropertiesMapPage() {
     }
   }, []);
 
-  // جلب القطع من المشاريع
+  // جلب القطع من مجموعة plots المنفصلة
   const fetchPlots = useCallback(async () => {
     try {
-      const q = query(collection(db, 'projects'));
+      const q = query(collection(db, 'plots'));
       const querySnapshot = await getDocs(q);
       const plots: Plot[] = [];
       
-      querySnapshot.forEach((projectDoc) => {
-        const projectData = projectDoc.data();
-        if (projectData.plots && Array.isArray(projectData.plots)) {
-          projectData.plots.forEach((plot: any) => {
-            if (plot.polygon && plot.polygon.length > 0) {
-              // حساب مركز القطعة من الـ polygon
-              const centerLat = plot.polygon.reduce((sum: number, point: any) => sum + point.lat, 0) / plot.polygon.length;
-              const centerLng = plot.polygon.reduce((sum: number, point: any) => sum + point.lng, 0) / plot.polygon.length;
-              
-              plots.push({
-                ...plot,
-                id: plot.id || `${projectDoc.id}-${plot.number}`,
-                projectId: projectDoc.id,
-                center: { lat: centerLat, lng: centerLng },
-              });
-            }
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.polygon && data.polygon.length > 0) {
+          // حساب مركز القطعة من الـ polygon
+          const centerLat = data.polygon.reduce((sum: number, point: any) => sum + point.lat, 0) / data.polygon.length;
+          const centerLng = data.polygon.reduce((sum: number, point: any) => sum + point.lng, 0) / data.polygon.length;
+          
+          plots.push({
+            id: doc.id,
+            projectId: data.projectId,
+            number: data.number,
+            status: data.status,
+            price: data.price,
+            currency: data.currency,
+            polygon: data.polygon,
+            center: { lat: centerLat, lng: centerLng },
+            dimensions: data.dimensions,
+            notes: data.notes,
+            propertyId: data.propertyId,
+            createdAt: data.createdAt?.toDate() || new Date(),
+            updatedAt: data.updatedAt?.toDate() || new Date(),
           });
         }
       });
