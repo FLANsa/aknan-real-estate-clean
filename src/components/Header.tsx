@@ -22,6 +22,9 @@ export default function Header() {
           <Link href="/properties" className="text-sm font-medium hover:text-primary">
             العقارات
           </Link>
+          <Link href="/map" className="text-sm font-medium hover:text-primary">
+            خارطة العقارات
+          </Link>
           <Link href="/about" className="text-sm font-medium hover:text-primary">
             من نحن
           </Link>
