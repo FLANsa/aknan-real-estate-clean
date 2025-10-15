@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
+import { useEffect, useState, useCallback, memo } from 'react';
+import { collection, getDocs, query, where, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { Property } from '@/types/property';
 import PropertyCard from '@/components/PropertyCard';
@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import useEmblaCarousel from 'embla-carousel-react';
 
-export default function FeaturedPropertiesCarousel() {
+// Memoized component for better performance
+const FeaturedPropertiesCarousel = memo(function FeaturedPropertiesCarousel() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -303,4 +304,6 @@ export default function FeaturedPropertiesCarousel() {
       </div>
     </div>
   );
-}
+});
+
+export default FeaturedPropertiesCarousel;
