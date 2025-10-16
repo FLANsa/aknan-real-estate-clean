@@ -65,9 +65,6 @@ export default function Header() {
             <Link href="/contact" className="text-sm font-medium hover:text-primary">
               اتصل بنا
             </Link>
-            <Button asChild>
-              <Link href="/admin">لوحة التحكم</Link>
-            </Button>
           </nav>
         </div>
 
@@ -110,11 +107,6 @@ export default function Header() {
               >
                 اتصل بنا
               </Link>
-              <div className="px-3 py-2">
-                <Button asChild className="w-full">
-                  <Link href="/admin" onClick={closeMenu}>لوحة التحكم</Link>
-                </Button>
-              </div>
             </div>
           </div>
         )}
