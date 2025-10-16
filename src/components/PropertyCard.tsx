@@ -52,48 +52,48 @@ export default function PropertyCard({ property }: PropertyCardProps) {
         </Badge>
       </div>
       
-      <CardContent className="p-5 space-y-4 flex-1 flex flex-col">
+      <CardContent className="p-4 md:p-5 space-y-3 md:space-y-4 flex-1 flex flex-col">
         <div>
-          <h3 className="font-semibold text-lg line-clamp-2 mb-1">
+          <h3 className="font-semibold text-base md:text-lg line-clamp-2 mb-1">
             {property.titleAr}
           </h3>
-          <div className="flex items-center text-sm text-muted-foreground">
-            <MapPin className="h-4 w-4 ml-1" />
+          <div className="flex items-center text-xs md:text-sm text-muted-foreground">
+            <MapPin className="h-3 w-3 md:h-4 md:w-4 ml-1" />
             {property.district && `${property.district}, `}{property.city}
           </div>
         </div>
         
         <div className="flex items-center justify-between">
-          <div className="text-2xl font-bold text-primary">
+          <div className="text-lg md:text-2xl font-bold text-primary">
             {Number(property.price || 0).toLocaleString()} {CURRENCY_LABELS[property.currency]}
           </div>
-          <Badge variant="outline">
+          <Badge variant="outline" className="text-xs md:text-sm">
             {PROPERTY_TYPE_LABELS[property.type]}
           </Badge>
         </div>
         
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+        <div className="flex items-center gap-3 md:gap-4 text-xs md:text-sm text-muted-foreground">
           {property.bedrooms && Number(property.bedrooms) > 0 && (
             <div className="flex items-center gap-1">
-              <Bed className="h-4 w-4" />
+              <Bed className="h-3 w-3 md:h-4 md:w-4" />
               <span>{Number(property.bedrooms)}</span>
             </div>
           )}
           {property.bathrooms && Number(property.bathrooms) > 0 && (
             <div className="flex items-center gap-1">
-              <Bath className="h-4 w-4" />
+              <Bath className="h-3 w-3 md:h-4 md:w-4" />
               <span>{Number(property.bathrooms)}</span>
             </div>
           )}
           {property.areaM2 && Number(property.areaM2) > 0 && (
             <div className="flex items-center gap-1">
-              <Square className="h-4 w-4" />
+              <Square className="h-3 w-3 md:h-4 md:w-4" />
               <span>{Number(property.areaM2)} م²</span>
             </div>
           )}
         </div>
         
-        <Button asChild className="w-full">
+        <Button asChild className="w-full h-10 md:h-11 text-sm md:text-base">
           <Link href={`/properties/${property.slug}`}>
             عرض التفاصيل
           </Link>

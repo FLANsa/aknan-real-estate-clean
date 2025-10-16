@@ -151,16 +151,16 @@ export default function EvaluationPage() {
     <div className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1">
-        <div className="container max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="space-y-8">
-            <div className="text-center space-y-4">
-              <h1 className="text-4xl md:text-5xl font-bold">تقييم العقار</h1>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+        <div className="container max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+          <div className="space-y-6 md:space-y-8">
+            <div className="text-center space-y-3 md:space-y-4">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold">تقييم العقار</h1>
+              <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
                 احصل على تقييم مجاني ودقيق لعقارك من خبرائنا المعتمدين
               </p>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 md:space-y-8">
               {error && (
                 <Alert variant="destructive">
                   <AlertDescription>{error}</AlertDescription>

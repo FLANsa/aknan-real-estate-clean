@@ -45,26 +45,26 @@ export default function Home() {
       
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative h-[70vh] flex items-center justify-center">
+        <section className="relative h-[50vh] md:h-[60vh] lg:h-[70vh] flex items-center justify-center">
           <div className="absolute inset-0">
             <div className="w-full h-full bg-[url('/hero.jpg')] bg-cover bg-center bg-no-repeat" />
             <div className="absolute inset-0 bg-black/50" />
           </div>
-          <div className="relative z-10 text-center text-white space-y-6 max-w-4xl mx-auto px-4">
-            <h1 className="text-4xl md:text-6xl font-bold">
+          <div className="relative z-10 text-center text-white space-y-4 md:space-y-6 max-w-4xl mx-auto px-4 sm:px-6">
+            <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold leading-tight">
               اكتشف منزل أحلامك
             </h1>
-            <p className="text-xl md:text-2xl text-blue-100">
+            <p className="text-lg md:text-xl lg:text-2xl text-blue-100">
               مع أكنان القمة العقارية، نقدم لك أفضل العقارات في المملكة العربية السعودية
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild size="lg" className="text-lg px-8 py-4">
+            <div className="flex flex-col gap-3 md:gap-4 w-full sm:w-auto sm:flex-row justify-center">
+              <Button asChild size="lg" className="text-base md:text-lg px-6 md:px-8 py-3 md:py-4 w-full sm:w-auto">
                 <Link href="/properties">استكشف العقارات</Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="text-lg px-8 py-4 bg-white/10 border-white/20 text-white hover:bg-white/20">
+              <Button asChild variant="outline" size="lg" className="text-base md:text-lg px-6 md:px-8 py-3 md:py-4 bg-white/10 border-white/20 text-white hover:bg-white/20 w-full sm:w-auto">
                 <Link href="/map">الخريطة العقارية</Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="text-lg px-8 py-4 bg-white/10 border-white/20 text-white hover:bg-white/20">
+              <Button asChild variant="outline" size="lg" className="text-base md:text-lg px-6 md:px-8 py-3 md:py-4 bg-white/10 border-white/20 text-white hover:bg-white/20 w-full sm:w-auto">
                 <Link href="/evaluation">اطلب تقييم عقارك</Link>
               </Button>
             </div>
@@ -72,24 +72,24 @@ export default function Home() {
         </section>
 
         {/* Stats Section */}
-        <section className="py-16 bg-muted/50">
+        <section className="py-12 md:py-16 bg-muted/50">
           <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 justify-center">
-              <div className="space-y-2">
-                <div className="text-3xl font-bold text-primary">500+</div>
-                <div className="text-sm text-muted-foreground">عقار متاح</div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 justify-center">
+              <div className="space-y-1 md:space-y-2">
+                <div className="text-2xl md:text-3xl font-bold text-primary">500+</div>
+                <div className="text-xs md:text-sm text-muted-foreground">عقار متاح</div>
               </div>
-              <div className="space-y-2">
-                <div className="text-3xl font-bold text-primary">1000+</div>
-                <div className="text-sm text-muted-foreground">عميل راضٍ</div>
+              <div className="space-y-1 md:space-y-2">
+                <div className="text-2xl md:text-3xl font-bold text-primary">1000+</div>
+                <div className="text-xs md:text-sm text-muted-foreground">عميل راضٍ</div>
               </div>
-              <div className="space-y-2">
-                <div className="text-3xl font-bold text-primary">15+</div>
-                <div className="text-sm text-muted-foreground">سنة خبرة</div>
+              <div className="space-y-1 md:space-y-2">
+                <div className="text-2xl md:text-3xl font-bold text-primary">15+</div>
+                <div className="text-xs md:text-sm text-muted-foreground">سنة خبرة</div>
               </div>
-              <div className="space-y-2">
-                <div className="text-3xl font-bold text-primary">50+</div>
-                <div className="text-sm text-muted-foreground">مدينة</div>
+              <div className="space-y-1 md:space-y-2">
+                <div className="text-2xl md:text-3xl font-bold text-primary">50+</div>
+                <div className="text-xs md:text-sm text-muted-foreground">مدينة</div>
               </div>
             </div>
           </div>

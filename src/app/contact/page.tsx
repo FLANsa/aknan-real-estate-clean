@@ -21,9 +21,7 @@ const contactSchema = z.object({
   name: z.string().min(2, 'الاسم مطلوب').max(100, 'الاسم طويل جداً'),
   email: z.string().email('البريد الإلكتروني غير صحيح'),
   phone: z.string().min(10, 'رقم الهاتف مطلوب').max(15, 'رقم الهاتف طويل جداً'),
-  subject: z.enum(['general', 'property_inquiry', 'evaluation', 'support', 'other'], {
-    required_error: 'نوع الاستفسار مطلوب'
-  }),
+  subject: z.enum(['general', 'property_inquiry', 'evaluation', 'support', 'other']),
   message: z.string().min(10, 'الرسالة قصيرة جداً').max(1000, 'الرسالة طويلة جداً'),
 });
 
@@ -113,17 +111,17 @@ export default function ContactPage() {
     <div className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1">
-        <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="space-y-12">
+        <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+          <div className="space-y-8 md:space-y-12">
             {/* Header */}
-            <div className="text-center space-y-4">
-              <h1 className="text-4xl md:text-5xl font-bold">اتصل بنا</h1>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <div className="text-center space-y-3 md:space-y-4">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold">اتصل بنا</h1>
+              <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
                 نحن هنا لمساعدتك في العثور على العقار المناسب أو الإجابة على أي استفسار
               </p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
               {/* Contact Form */}
               <Card>
                 <CardHeader>
@@ -132,7 +130,7 @@ export default function ContactPage() {
                     أرسل لنا رسالة
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 md:p-6">
                   <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                     {error && (
                       <Alert variant="destructive">
@@ -140,7 +138,7 @@ export default function ContactPage() {
                       </Alert>
                     )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="name">الاسم *</Label>
                         <Input
@@ -217,7 +215,7 @@ export default function ContactPage() {
                     <Button
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full"
+                      className="w-full h-11 md:h-12 text-base md:text-lg"
                     >
                       {isSubmitting ? 'جاري الإرسال...' : 'إرسال الرسالة'}
                     </Button>
@@ -226,12 +224,12 @@ export default function ContactPage() {
               </Card>
 
               {/* Contact Information */}
-              <div className="space-y-6">
+              <div className="space-y-4 md:space-y-6">
                 <Card>
                   <CardHeader>
                     <CardTitle>معلومات التواصل</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="p-4 md:p-6 space-y-4">
                     <div className="flex items-center gap-3">
                       <Phone className="h-5 w-5 text-primary" />
                       <div>

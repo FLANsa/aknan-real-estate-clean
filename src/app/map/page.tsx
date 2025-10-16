@@ -17,7 +17,7 @@ import Footer from '@/components/Footer';
 // إعدادات الخريطة
 const mapContainerStyle = {
   width: '100%',
-  height: '70vh',
+  height: '400px', // Mobile first
 };
 
 const defaultCenter = {
@@ -179,10 +179,10 @@ export default function PropertiesMapPage() {
         
         // إضافة العقارات
         properties.forEach((property) => {
-          if (property.location?.lat && property.location?.lng) {
+          if (property.lat && property.lng) {
             mapMarkers.push({
               id: property.id,
-              position: { lat: property.location.lat, lng: property.location.lng },
+              position: { lat: property.lat, lng: property.lng },
               type: 'property',
               data: property,
               title: property.titleAr,
@@ -312,10 +312,10 @@ export default function PropertiesMapPage() {
         </div>
         
         <div className="text-sm text-muted-foreground space-y-1">
-          {plot.area && (
+          {plot.dimensions?.area && (
             <div className="flex items-center gap-2">
               <Building className="h-4 w-4" />
-              <span>{plot.area} م²</span>
+              <span>{plot.dimensions.area} م²</span>
             </div>
           )}
           
@@ -421,9 +421,9 @@ export default function PropertiesMapPage() {
                 </p>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="relative">
+                <div className="relative h-[400px] md:h-[500px] lg:h-[600px]">
                   <GoogleMap
-                    mapContainerStyle={mapContainerStyle}
+                    mapContainerStyle={{ width: '100%', height: '100%' }}
                     center={mapCenter}
                     zoom={mapZoom}
                     options={{
@@ -476,25 +476,25 @@ export default function PropertiesMapPage() {
                   </GoogleMap>
                   
                   {/* Map Stats */}
-                  <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg p-4 shadow-lg">
-                    <div className="text-sm space-y-2">
-                      <div className="font-semibold text-center">إحصائيات الخريطة</div>
+                  <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-white/90 backdrop-blur-sm rounded-lg p-2 md:p-4 shadow-lg max-w-[200px] md:max-w-none">
+                    <div className="text-xs md:text-sm space-y-1 md:space-y-2">
+                      <div className="font-semibold text-center text-xs md:text-sm">إحصائيات الخريطة</div>
                       <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                          <span>العقارات: {markers.filter(m => m.type === 'property').length}</span>
+                        <div className="flex items-center gap-1 md:gap-2">
+                          <div className="w-2 h-2 md:w-3 md:h-3 bg-blue-500 rounded-full flex-shrink-0"></div>
+                          <span className="text-xs md:text-sm">العقارات: {markers.filter(m => m.type === 'property').length}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                          <span>القطع المتاحة: {markers.filter(m => m.type === 'plot' && m.data.status === 'available').length}</span>
+                        <div className="flex items-center gap-1 md:gap-2">
+                          <div className="w-2 h-2 md:w-3 md:h-3 bg-green-500 rounded-full flex-shrink-0"></div>
+                          <span className="text-xs md:text-sm">القطع المتاحة: {markers.filter(m => m.type === 'plot' && m.data.status === 'available').length}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                          <span>القطع المباعة: {markers.filter(m => m.type === 'plot' && m.data.status === 'sold').length}</span>
+                        <div className="flex items-center gap-1 md:gap-2">
+                          <div className="w-2 h-2 md:w-3 md:h-3 bg-red-500 rounded-full flex-shrink-0"></div>
+                          <span className="text-xs md:text-sm">القطع المباعة: {markers.filter(m => m.type === 'plot' && m.data.status === 'sold').length}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                          <span>القطع المحجوزة: {markers.filter(m => m.type === 'plot' && m.data.status === 'reserved').length}</span>
+                        <div className="flex items-center gap-1 md:gap-2">
+                          <div className="w-2 h-2 md:w-3 md:h-3 bg-yellow-500 rounded-full flex-shrink-0"></div>
+                          <span className="text-xs md:text-sm">القطع المحجوزة: {markers.filter(m => m.type === 'plot' && m.data.status === 'reserved').length}</span>
                         </div>
                       </div>
                     </div>
@@ -506,19 +506,19 @@ export default function PropertiesMapPage() {
         </section>
 
         {/* Call to Action */}
-        <section className="py-16 bg-muted/50">
+        <section className="py-12 md:py-16 bg-muted/50">
           <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-3xl font-bold mb-4">
+            <h2 className="text-2xl md:text-3xl font-bold mb-4">
               لم تجد ما تبحث عنه؟
             </h2>
-            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+            <p className="text-lg md:text-xl text-muted-foreground mb-6 md:mb-8 max-w-2xl mx-auto">
               تواصل معنا وسنساعدك في العثور على العقار المثالي
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild size="lg" className="text-lg px-8 py-4">
+            <div className="flex flex-col gap-3 md:gap-4 w-full sm:w-auto sm:flex-row justify-center">
+              <Button asChild size="lg" className="text-base md:text-lg px-6 md:px-8 py-3 md:py-4 w-full sm:w-auto">
                 <a href="/properties">تصفح جميع العقارات</a>
               </Button>
-              <Button asChild variant="outline" size="lg" className="text-lg px-8 py-4">
+              <Button asChild variant="outline" size="lg" className="text-base md:text-lg px-6 md:px-8 py-3 md:py-4 w-full sm:w-auto">
                 <a href="/contact">تواصل معنا</a>
               </Button>
             </div>
