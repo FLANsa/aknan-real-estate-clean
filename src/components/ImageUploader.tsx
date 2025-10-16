@@ -25,7 +25,7 @@ interface UploadProgress {
 }
 
 export default function ImageUploader({
-  images,
+  images = [],
   onImagesChange,
   propertyId = 'temp',
   maxImages = 20,

@@ -169,6 +169,58 @@ export default async function PropertyDetailsPage({ params }: PropertyDetailsPag
                 </CardContent>
               </Card>
 
+              {/* Property Details */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>تفاصيل العقار</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {property.areaM2 && (
+                      <div className="text-center p-4 bg-muted/50 rounded-lg">
+                        <Square className="h-6 w-6 mx-auto mb-2 text-primary" />
+                        <div className="text-lg font-semibold">{property.areaM2}</div>
+                        <div className="text-sm text-muted-foreground">م²</div>
+                      </div>
+                    )}
+                    
+                    {property.bedrooms && (
+                      <div className="text-center p-4 bg-muted/50 rounded-lg">
+                        <Bed className="h-6 w-6 mx-auto mb-2 text-primary" />
+                        <div className="text-lg font-semibold">{property.bedrooms}</div>
+                        <div className="text-sm text-muted-foreground">غرف نوم</div>
+                      </div>
+                    )}
+                    
+                    {property.bathrooms && (
+                      <div className="text-center p-4 bg-muted/50 rounded-lg">
+                        <Bath className="h-6 w-6 mx-auto mb-2 text-primary" />
+                        <div className="text-lg font-semibold">{property.bathrooms}</div>
+                        <div className="text-sm text-muted-foreground">دورات مياه</div>
+                      </div>
+                    )}
+                    
+                    {property.yearBuilt && (
+                      <div className="text-center p-4 bg-muted/50 rounded-lg">
+                        <Calendar className="h-6 w-6 mx-auto mb-2 text-primary" />
+                        <div className="text-lg font-semibold">{property.yearBuilt}</div>
+                        <div className="text-sm text-muted-foreground">سنة البناء</div>
+                      </div>
+                    )}
+                    
+                    {property.floor && (
+                      <div className="text-center p-4 bg-muted/50 rounded-lg">
+                        <div className="h-6 w-6 mx-auto mb-2 text-primary flex items-center justify-center">
+                          <span className="text-lg font-bold">#</span>
+                        </div>
+                        <div className="text-lg font-semibold">{property.floor}</div>
+                        <div className="text-sm text-muted-foreground">الطابق</div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Description */}
               {property.descriptionAr && (
                 <Card>

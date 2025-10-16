@@ -39,15 +39,21 @@ export default function PropertyFilters({ cities, districts }: PropertyFiltersPr
     const updatedFilters = { ...filters, ...newFilters };
     setFilters(updatedFilters);
     
-    // Update URL
-    const params = new URLSearchParams();
-    Object.entries(updatedFilters).forEach(([key, value]) => {
-      if (value) {
-        params.set(key, value);
-      }
-    });
-    
-    router.push(`/properties?${params.toString()}`);
+    // Update URL safely
+    try {
+      const params = new URLSearchParams();
+      Object.entries(updatedFilters).forEach(([key, value]) => {
+        if (value && value !== '') {
+          params.set(key, value);
+        }
+      });
+      
+      const newUrl = `/properties?${params.toString()}`;
+      router.push(newUrl);
+    } catch (error) {
+      console.error('Error updating URL:', error);
+      // Fallback: just update the state without changing URL
+    }
   };
 
   const clearFilters = () => {

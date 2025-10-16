@@ -26,7 +26,7 @@ export default function Footer() {
             <ul className="space-y-2 text-sm">
               <li>بيع العقارات</li>
               <li>إيجار العقارات</li>
-              <li>تقييم العقارات</li>
+              <li><Link href="/evaluation" className="hover:text-primary">تقييم العقارات</Link></li>
               <li>الاستشارات العقارية</li>
             </ul>
           </div>

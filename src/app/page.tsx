@@ -65,7 +65,7 @@ export default function Home() {
                 <Link href="/map">الخريطة العقارية</Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="text-lg px-8 py-4 bg-white/10 border-white/20 text-white hover:bg-white/20">
-                <Link href="/contact">اطلب تقييم عقارك</Link>
+                <Link href="/evaluation">اطلب تقييم عقارك</Link>
               </Button>
             </div>
           </div>
