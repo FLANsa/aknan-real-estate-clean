@@ -23,8 +23,15 @@ export async function getServerUser(): Promise<User | null> {
       email: decodedToken.email,
       displayName: decodedToken.name,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error verifying user token:', error);
+    
+    // If token is expired, clear the cookie
+    if (error.code === 'auth/id-token-expired') {
+      const cookieStore = await cookies();
+      cookieStore.delete('firebase-auth-token');
+    }
+    
     return null;
   }
 }

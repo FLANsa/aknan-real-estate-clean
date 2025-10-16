@@ -38,7 +38,10 @@ export default function AdminLogin() {
       });
 
       if (response.ok) {
-        router.push('/admin');
+        // Add a small delay to ensure cookie is set
+        setTimeout(() => {
+          router.push('/admin');
+        }, 100);
       } else {
         const errorData = await response.json();
         setError(errorData.error || 'حدث خطأ أثناء تسجيل الدخول');

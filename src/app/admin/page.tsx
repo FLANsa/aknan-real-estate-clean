@@ -1,13 +1,24 @@
-import { requireAdmin } from '@/lib/firebase/auth';
+import { requireAdmin, getServerUser } from '@/lib/firebase/auth';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Building2, Plus, BarChart3, Users, MapPin } from 'lucide-react';
+import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminDashboard() {
-  const user = await requireAdmin();
+  try {
+    const user = await requireAdmin();
+  } catch (error) {
+    console.error('Admin access error:', error);
+    redirect('/login');
+  }
+  
+  const user = await getServerUser();
+  if (!user) {
+    redirect('/login');
+  }
 
   return (
     <div className="space-y-6">
