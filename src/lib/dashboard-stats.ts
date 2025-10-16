@@ -1,5 +1,5 @@
 import { adminDb } from '@/lib/firebase/admin';
-import { collection, getDocs, query, where, orderBy, limit } from 'firebase-admin/firestore';
+import { getDocs, query, where, orderBy, limit } from 'firebase-admin/firestore';
 
 export interface DashboardStats {
   totalProperties: number;
