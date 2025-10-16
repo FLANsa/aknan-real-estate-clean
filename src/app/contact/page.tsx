@@ -265,7 +265,7 @@ export default function ContactPage() {
                   </CardContent>
                 </Card>
 
-                <Card>
+        <Card>
                   <CardHeader>
                     <CardTitle>تواصل معنا مباشرة</CardTitle>
                   </CardHeader>
@@ -279,16 +279,16 @@ export default function ContactPage() {
                         <Link href={wa} target="_blank" rel="noopener noreferrer">
                           واتساب
                         </Link>
-                      </Button>
+              </Button>
                       
                       <Button variant="outline" asChild className="w-full">
                         <Link href="tel:+966500000000">
                           اتصل الآن
                         </Link>
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
                 <Card>
                   <CardHeader>
