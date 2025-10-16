@@ -35,6 +35,8 @@ interface PropertyDetailsPageProps {
   };
 }
 
+// generateStaticParams not needed for standalone mode
+
 export async function generateMetadata({ params }: PropertyDetailsPageProps): Promise<Metadata> {
   const resolvedParams = await params;
   const q = query(collection(db, 'properties'), where('slug', '==', resolvedParams.slug), limit(1));

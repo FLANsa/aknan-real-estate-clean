@@ -15,6 +15,8 @@ interface PublicProjectPageProps {
   params: Promise<{ id: string }>;
 }
 
+// generateStaticParams not needed for standalone mode
+
 export async function generateMetadata({ params }: PublicProjectPageProps): Promise<Metadata> {
   const resolvedParams = await params;
   const result = await getPublicProject(resolvedParams.id);
