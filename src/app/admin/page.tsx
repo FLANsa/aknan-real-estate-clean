@@ -26,11 +26,11 @@ export default async function AdminDashboard() {
     user = await requireAdmin();
   } catch (error) {
     console.error('Admin access error:', error);
-    redirect('/login');
+    redirect('/');
   }
   
   if (!user) {
-    redirect('/login');
+    redirect('/');
   }
 
   // Fetch dashboard statistics
