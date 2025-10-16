@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Eye, EyeOff, CheckCircle } from 'lucide-react';
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
@@ -17,6 +17,7 @@ export default function AdminLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -38,10 +39,11 @@ export default function AdminLogin() {
       });
 
       if (response.ok) {
+        setSuccess(true);
         // Add a small delay to ensure cookie is set
         setTimeout(() => {
           router.push('/admin');
-        }, 100);
+        }, 1000);
       } else {
         const errorData = await response.json();
         setError(errorData.error || 'حدث خطأ أثناء تسجيل الدخول');
@@ -88,6 +90,15 @@ export default function AdminLogin() {
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            
+            {success && (
+              <Alert className="border-green-200 bg-green-50 text-green-800">
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>
+                  تم تسجيل الدخول بنجاح! جاري التوجيه إلى لوحة التحكم...
+                </AlertDescription>
               </Alert>
             )}
             

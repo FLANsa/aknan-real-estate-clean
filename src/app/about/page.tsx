@@ -229,7 +229,7 @@ export default function AboutPage() {
             <div className="space-y-8">
               <div className="text-center">
                 <h2 className="text-3xl font-bold mb-4">فريقنا</h2>
-                <p className="text-muted-foreground max-w-2xl mx-auto">
+        <p className="text-muted-foreground max-w-2xl mx-auto">
                   فريق من الخبراء المتخصصين في مجال العقارات والتسويق العقاري
                 </p>
               </div>
