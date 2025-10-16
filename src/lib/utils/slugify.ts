@@ -19,7 +19,7 @@ const wordMappings: Record<string, string> = {
   'أرض': 'land',
   'مكتب': 'office',
   'محل': 'shop',
-  'الرياض': 'riyadh',
+  'بريدة': 'buraydah',
   'جدة': 'jeddah',
   'مكة': 'makkah',
   'المدينة': 'medina',

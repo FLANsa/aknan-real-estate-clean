@@ -76,7 +76,7 @@ export const CURRENCY_LABELS: Record<Currency, string> = {
 
 // Major Saudi cities for quick location selection
 export const SAUDI_CITIES = [
-  { name: 'الرياض', lat: 24.7136, lng: 46.6753 },
+  { name: 'بريدة', lat: 26.3260, lng: 43.9750 },
   { name: 'جدة', lat: 21.4858, lng: 39.1925 },
   { name: 'مكة', lat: 21.3891, lng: 39.8579 },
   { name: 'المدينة', lat: 24.5247, lng: 39.5692 },

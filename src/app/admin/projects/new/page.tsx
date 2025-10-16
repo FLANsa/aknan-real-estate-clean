@@ -29,7 +29,7 @@ export default function NewProjectPage() {
     resolver: zodResolver(projectSchema),
     defaultValues: {
       name: '',
-      location: { lat: 24.7136, lng: 46.6753 }, // Default to Riyadh
+      location: { lat: 26.3260, lng: 43.9750 }, // Default to Buraydah
       zoom: 15,
       description: '',
     },
@@ -85,7 +85,7 @@ export default function NewProjectPage() {
               <Input
                 id="name"
                 {...register('name')}
-                placeholder="مثال: مخطط الرياض الجديد"
+                placeholder="مثال: مخطط بريدة الجديد"
                 autoComplete="off"
               />
               {errors.name && (

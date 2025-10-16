@@ -34,7 +34,7 @@ export default function Footer() {
           <div className="space-y-4">
             <h4 className="text-sm font-semibold">معلومات الاتصال</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>الرياض، المملكة العربية السعودية</li>
+              <li>بريدة، القصيم، المملكة العربية السعودية</li>
               <li>الهاتف: +966 5X XXX XXXX</li>
               <li>البريد الإلكتروني: info@aknan.sa</li>
             </ul>

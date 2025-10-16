@@ -21,8 +21,8 @@ const mapContainerStyle = {
 };
 
 const defaultCenter = {
-  lat: 24.7136, // الرياض
-  lng: 46.6753,
+  lat: 26.3260, // بريدة
+  lng: 43.9750,
 };
 
 const defaultZoom = 10;

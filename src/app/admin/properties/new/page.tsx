@@ -100,7 +100,7 @@ export default function NewPropertyPage() {
                   id="titleAr"
                   autoComplete="off"
                   {...register('titleAr')}
-                  placeholder="فيلا فاخرة في الرياض"
+                  placeholder="فيلا فاخرة في بريدة"
                 />
                 {errors.titleAr && (
                   <p className="text-sm text-destructive">{errors.titleAr.message}</p>
@@ -113,7 +113,7 @@ export default function NewPropertyPage() {
                   id="city"
                   autoComplete="address-level2"
                   {...register('city')}
-                  placeholder="الرياض"
+                  placeholder="بريدة"
                 />
                 {errors.city && (
                   <p className="text-sm text-destructive">{errors.city.message}</p>

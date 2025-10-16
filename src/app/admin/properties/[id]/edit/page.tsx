@@ -209,7 +209,7 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
                 <Input
                   id="titleAr"
                   {...register('titleAr')}
-                  placeholder="فيلا فاخرة في الرياض"
+                  placeholder="فيلا فاخرة في بريدة"
                 />
                 {errors.titleAr && (
                   <p className="text-sm text-destructive">{errors.titleAr.message}</p>
@@ -221,7 +221,7 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
                 <Input
                   id="city"
                   {...register('city')}
-                  placeholder="الرياض"
+                  placeholder="بريدة"
                 />
                 {errors.city && (
                   <p className="text-sm text-destructive">{errors.city.message}</p>

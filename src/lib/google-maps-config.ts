@@ -9,8 +9,8 @@ export const MAP_CONFIG = {
   minZoom: 1,
   maxZoom: 20,
   defaultCenter: {
-    lat: 24.7136, // Riyadh
-    lng: 46.6753,
+    lat: 26.3260, // Buraydah
+    lng: 43.9750,
   },
 } as const;
 
@@ -23,7 +23,7 @@ export const PLOT_COLORS = {
 
 // Saudi cities coordinates
 export const SAUDI_CITIES = [
-  { name: 'الرياض', lat: 24.7136, lng: 46.6753 },
+  { name: 'بريدة', lat: 26.3260, lng: 43.9750 },
   { name: 'جدة', lat: 21.4858, lng: 39.1925 },
   { name: 'مكة', lat: 21.3891, lng: 39.8579 },
   { name: 'المدينة', lat: 24.5247, lng: 39.5692 },

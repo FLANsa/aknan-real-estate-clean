@@ -283,7 +283,7 @@ export default function EvaluationPage() {
                       <Input
                         id="city"
                         {...register('city')}
-                        placeholder="مثال: الرياض"
+                        placeholder="مثال: بريدة"
                       />
                       {errors.city && (
                         <p className="text-sm text-destructive">{errors.city.message}</p>
