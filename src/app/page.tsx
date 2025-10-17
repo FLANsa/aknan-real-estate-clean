@@ -45,10 +45,22 @@ export default function Home() {
       
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative h-[50vh] md:h-[60vh] lg:h-[70vh] flex items-center justify-center">
+        <section className="relative h-[50vh] md:h-[60vh] lg:h-[70vh] flex items-center justify-center overflow-hidden">
           <div className="absolute inset-0">
-            <div className="w-full h-full bg-[url('/hero.jpg')] bg-cover bg-center bg-no-repeat" />
-            <div className="absolute inset-0 bg-black/50" />
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="w-full h-full object-cover scale-105 transition-transform duration-1000"
+              poster="/hero.jpg"
+              preload="metadata"
+            >
+              <source src="/hero-video.mp4" type="video/mp4" />
+              {/* Fallback للصورة إذا لم يعمل الفيديو */}
+              <div className="w-full h-full bg-[url('/hero.jpg')] bg-cover bg-center bg-no-repeat" />
+            </video>
+            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/60" />
           </div>
           <div className="relative z-10 text-center text-white space-y-4 md:space-y-6 max-w-4xl mx-auto px-4 sm:px-6">
             <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold leading-tight">
