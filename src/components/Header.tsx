@@ -18,7 +18,7 @@ export default function Header() {
   };
 
   return (
-    <header className="fixed top-0 z-50 w-full bg-white/10 backdrop-blur-md border-b border-white/20 shadow-lg">
+    <header className="fixed top-0 z-50 w-full">
       <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-32 items-center justify-between">
           {/* Logo */}
@@ -27,8 +27,8 @@ export default function Header() {
               <Image
                 src="/logo.png"
                 alt="أكنان القمة العقارية"
-                width={120}
-                height={120}
+                width={250}
+                height={250}
                 className="rounded-xl shadow-lg group-hover:scale-105 transition-transform duration-300"
               />
             </div>
@@ -39,7 +39,7 @@ export default function Header() {
             variant="ghost"
             size="sm"
             onClick={toggleMenu}
-            className="md:hidden bg-white/20 hover:bg-white/30 text-white border-white/30"
+            className="md:hidden bg-[#BC5934] hover:bg-[#A54E2E] text-white border-[#BC5934]"
             aria-label="فتح القائمة"
           >
             {isMenuOpen ? (
