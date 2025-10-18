@@ -54,16 +54,18 @@ export default function Home() {
               autoPlay
               muted
               playsInline
-              className="w-full h-full object-cover scale-105 transition-opacity duration-2000 ease-in-out"
+              className="w-full h-full object-cover scale-105 transition-opacity duration-3000 ease-in-out"
               poster="/hero.jpg"
               preload="metadata"
               onEnded={() => {
                 const video1 = document.getElementById('hero-video-1') as HTMLVideoElement;
                 const video2 = document.getElementById('hero-video-2') as HTMLVideoElement;
                 if (video1 && video2) {
-                  video1.style.opacity = '0';
-                  video2.style.opacity = '1';
-                  video2.play();
+                  setTimeout(() => {
+                    video1.style.opacity = '0';
+                    video2.style.opacity = '1';
+                    video2.play();
+                  }, 100);
                 }
               }}
             >
@@ -75,16 +77,18 @@ export default function Home() {
               id="hero-video-2"
               muted
               playsInline
-              className="w-full h-full object-cover scale-105 transition-opacity duration-2000 ease-in-out absolute inset-0 opacity-0"
+              className="w-full h-full object-cover scale-105 transition-opacity duration-3000 ease-in-out absolute inset-0 opacity-0"
               preload="metadata"
               onEnded={() => {
                 const video1 = document.getElementById('hero-video-1') as HTMLVideoElement;
                 const video2 = document.getElementById('hero-video-2') as HTMLVideoElement;
                 if (video1 && video2) {
-                  video2.style.opacity = '0';
-                  video1.style.opacity = '1';
-                  video1.currentTime = 0;
-                  video1.play();
+                  setTimeout(() => {
+                    video2.style.opacity = '0';
+                    video1.style.opacity = '1';
+                    video1.currentTime = 0;
+                    video1.play();
+                  }, 100);
                 }
               }}
             >
