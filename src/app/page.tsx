@@ -48,17 +48,43 @@ export default function Home() {
         <section className="relative h-screen flex items-center justify-center overflow-hidden">
           <div className="absolute inset-0">
             <video
+              id="hero-video-1"
               autoPlay
               muted
-              loop
               playsInline
               className="w-full h-full object-cover scale-105 transition-transform duration-1000"
               poster="/hero.jpg"
               preload="metadata"
+              onEnded={() => {
+                const video2 = document.getElementById('hero-video-2') as HTMLVideoElement;
+                if (video2) {
+                  video2.play();
+                }
+              }}
             >
               <source src="/hero-video.mp4" type="video/mp4" />
               {/* Fallback للصورة إذا لم يعمل الفيديو */}
               <div className="w-full h-full bg-[url('/hero.jpg')] bg-cover bg-center bg-no-repeat" />
+            </video>
+            <video
+              id="hero-video-2"
+              muted
+              playsInline
+              loop
+              className="w-full h-full object-cover scale-105 transition-transform duration-1000 absolute inset-0 opacity-0"
+              preload="metadata"
+              onPlay={() => {
+                const video1 = document.getElementById('hero-video-1') as HTMLVideoElement;
+                if (video1) {
+                  video1.style.opacity = '0';
+                }
+                const video2 = document.getElementById('hero-video-2') as HTMLVideoElement;
+                if (video2) {
+                  video2.style.opacity = '1';
+                }
+              }}
+            >
+              <source src="/hero-video-2.mp4" type="video/mp4" />
             </video>
             <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/60" />
           </div>
