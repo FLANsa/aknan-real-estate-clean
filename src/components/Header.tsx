@@ -22,17 +22,16 @@ export default function Header() {
       <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-20 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-3 group">
+          <Link href="/" className="flex items-center group">
             <div className="relative">
               <Image
                 src="/logo.png"
                 alt="أكنان القمة العقارية"
-                width={50}
-                height={50}
+                width={60}
+                height={60}
                 className="rounded-xl shadow-lg group-hover:scale-105 transition-transform duration-300"
               />
             </div>
-            <span className="text-xl font-bold text-white drop-shadow-lg">أكنان القمة العقارية</span>
           </Link>
           
           {/* Mobile Menu Button */}
