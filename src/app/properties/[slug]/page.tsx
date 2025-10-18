@@ -106,7 +106,7 @@ export default async function PropertyDetailsPage({ params }: PropertyDetailsPag
                   
                   <div className="flex gap-2">
                     {property.featured && (
-                      <Badge className="bg-yellow-500 hover:bg-yellow-500">
+                      <Badge className="bg-yellow-500 hover:bg-yellow-500 text-white">
                         <Star className="h-3 w-3 ml-1" />
                         مميز
                       </Badge>

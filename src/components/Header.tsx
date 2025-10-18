@@ -36,8 +36,8 @@ export default function Header() {
               <Image
                 src="/logo.png"
                 alt="أكنان القمة العقارية"
-                width={250}
-                height={250}
+                width={300}
+                height={300}
                 className="group-hover:scale-105 transition-transform duration-300"
               />
             </div>

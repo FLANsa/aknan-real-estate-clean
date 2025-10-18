@@ -36,7 +36,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
           }}
         />
         {property.featured && (
-          <Badge className="absolute top-2 right-2 bg-yellow-500 hover:bg-yellow-500">
+          <Badge className="absolute top-2 right-2 bg-yellow-500 hover:bg-yellow-500 text-white">
             مميز
           </Badge>
         )}

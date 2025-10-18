@@ -126,6 +126,7 @@ img {
   --aknan-400: #CB6742;
   --aknan-500: #BC5934;
   --aknan-600: #A54E2E;
+  --aknan-primary-foreground: #ffffff;
   --color-aknan-primary: var(--aknan-500);
   --color-aknan-primary-foreground: #ffffff;
   --ring-aknan: var(--aknan-400);
@@ -166,6 +167,7 @@ img {
   
   /* Aknan Brand Colors - Dark Mode */
   --aknan-500: #B45431; /* slightly adjusted for dark mode */
+  --aknan-primary-foreground: #ffffff;
 }
 
 @layer base {
