@@ -131,10 +131,10 @@ export default async function AdminDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">العقارات المؤجرة</CardTitle>
-            <Users className="h-4 w-4 text-orange-500" />
+            <Users className="h-4 w-4 text-aknan-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{stats.rentedProperties}</div>
+            <div className="text-2xl font-bold text-aknan-600">{stats.rentedProperties}</div>
             <p className="text-xs text-muted-foreground">
               تحت الإيجار
             </p>

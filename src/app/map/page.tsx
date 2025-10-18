@@ -345,7 +345,7 @@ export default function PropertiesMapPage() {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
-        <main className="flex-1 flex items-center justify-center">
+        <main className="flex-1 flex items-center justify-center pt-32">
           <GoogleMapsErrorHandler error={loadError} />
         </main>
         <Footer />
@@ -357,7 +357,7 @@ export default function PropertiesMapPage() {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
-        <main className="flex-1 flex items-center justify-center">
+        <main className="flex-1 flex items-center justify-center pt-32">
           <div className="text-center space-y-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
             <p className="text-muted-foreground">جاري تحميل الخريطة العقارية...</p>
@@ -372,7 +372,7 @@ export default function PropertiesMapPage() {
     <div className="min-h-screen flex flex-col">
       <Header />
       
-      <main className="flex-1">
+      <main className="flex-1 pt-32">
         {/* Header Section */}
         <section className="bg-primary text-primary-foreground py-12">
           <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">

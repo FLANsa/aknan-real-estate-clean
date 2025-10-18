@@ -77,7 +77,7 @@ export default async function PropertyDetailsPage({ params }: PropertyDetailsPag
     <div className="min-h-screen flex flex-col">
       <Header />
       
-      <main className="flex-1">
+      <main className="flex-1 pt-32">
         {/* Breadcrumb */}
         <div className="container py-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">

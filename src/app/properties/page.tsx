@@ -14,7 +14,7 @@ export default async function PropertiesPage({ searchParams }: PropertiesPagePro
     <div className="min-h-screen flex flex-col">
       <Header />
       
-      <main className="flex-1">
+      <main className="flex-1 pt-32">
         <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="space-y-8">
             <div className="text-center space-y-4">

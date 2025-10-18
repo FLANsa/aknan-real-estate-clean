@@ -79,6 +79,9 @@ img {
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-aknan-400: var(--aknan-400);
+  --color-aknan-500: var(--aknan-500);
+  --color-aknan-600: var(--aknan-600);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -93,8 +96,8 @@ img {
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary: var(--aknan-500);
+  --primary-foreground: var(--aknan-primary-foreground);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
@@ -118,6 +121,14 @@ img {
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  
+  /* Aknan Brand Colors */
+  --aknan-400: #CB6742;
+  --aknan-500: #BC5934;
+  --aknan-600: #A54E2E;
+  --color-aknan-primary: var(--aknan-500);
+  --color-aknan-primary-foreground: #ffffff;
+  --ring-aknan: var(--aknan-400);
 }
 
 .dark {
@@ -127,8 +138,8 @@ img {
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --primary: var(--aknan-500);
+  --primary-foreground: var(--aknan-primary-foreground);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -152,6 +163,9 @@ img {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  
+  /* Aknan Brand Colors - Dark Mode */
+  --aknan-500: #B45431; /* slightly adjusted for dark mode */
 }
 
 @layer base {
@@ -165,5 +179,29 @@ img {
   }
   html {
     direction: rtl;
+  }
+}
+
+/* Mobile Menu Animation */
+@keyframes slideDown {
+  from { 
+    transform: translateY(-12%); 
+    opacity: 0; 
+  }
+  to { 
+    transform: translateY(0%);  
+    opacity: 1; 
+  }
+}
+
+/* Drawer Menu Animation */
+@keyframes slideIn {
+  from { 
+    transform: translateX(100%); 
+    opacity: 0; 
+  }
+  to { 
+    transform: translateX(0%);  
+    opacity: 1; 
   }
 }

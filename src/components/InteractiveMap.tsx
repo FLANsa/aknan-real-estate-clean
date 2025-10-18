@@ -262,7 +262,7 @@ export default function InteractiveMap({
                 type="text"
                 value={newPlotNumber}
                 onChange={(e) => setNewPlotNumber(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-aknan-400"
                 placeholder="مثال: A-1, B-12"
                 autoFocus
               />
