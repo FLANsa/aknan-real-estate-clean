@@ -1,3 +1,5 @@
+'use client';
+
 import dynamic from 'next/dynamic';
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -52,12 +54,15 @@ export default function Home() {
               autoPlay
               muted
               playsInline
-              className="w-full h-full object-cover scale-105 transition-transform duration-1000"
+              className="w-full h-full object-cover scale-105 transition-opacity duration-1000 ease-in-out"
               poster="/hero.jpg"
               preload="metadata"
               onEnded={() => {
+                const video1 = document.getElementById('hero-video-1') as HTMLVideoElement;
                 const video2 = document.getElementById('hero-video-2') as HTMLVideoElement;
-                if (video2) {
+                if (video1 && video2) {
+                  video1.style.opacity = '0';
+                  video2.style.opacity = '1';
                   video2.play();
                 }
               }}
@@ -70,17 +75,16 @@ export default function Home() {
               id="hero-video-2"
               muted
               playsInline
-              loop
-              className="w-full h-full object-cover scale-105 transition-transform duration-1000 absolute inset-0 opacity-0"
+              className="w-full h-full object-cover scale-105 transition-opacity duration-1000 ease-in-out absolute inset-0 opacity-0"
               preload="metadata"
-              onPlay={() => {
+              onEnded={() => {
                 const video1 = document.getElementById('hero-video-1') as HTMLVideoElement;
-                if (video1) {
-                  video1.style.opacity = '0';
-                }
                 const video2 = document.getElementById('hero-video-2') as HTMLVideoElement;
-                if (video2) {
-                  video2.style.opacity = '1';
+                if (video1 && video2) {
+                  video2.style.opacity = '0';
+                  video1.style.opacity = '1';
+                  video1.currentTime = 0;
+                  video1.play();
                 }
               }}
             >
