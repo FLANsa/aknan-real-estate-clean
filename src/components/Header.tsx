@@ -20,15 +20,15 @@ export default function Header() {
   return (
     <header className="fixed top-0 z-50 w-full bg-white/10 backdrop-blur-md border-b border-white/20 shadow-lg">
       <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-20 items-center justify-between">
+        <div className="flex h-24 items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center group">
             <div className="relative">
               <Image
                 src="/logo.png"
                 alt="أكنان القمة العقارية"
-                width={60}
-                height={60}
+                width={80}
+                height={80}
                 className="rounded-xl shadow-lg group-hover:scale-105 transition-transform duration-300"
               />
             </div>

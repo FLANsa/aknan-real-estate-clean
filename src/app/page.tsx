@@ -69,17 +69,6 @@ export default function Home() {
             <p className="text-lg md:text-xl lg:text-2xl text-blue-100">
               مع أكنان القمة العقارية، نقدم لك أفضل العقارات في المملكة العربية السعودية
             </p>
-            <div className="flex flex-col gap-3 md:gap-4 w-full sm:w-auto sm:flex-row justify-center">
-              <Button asChild size="lg" className="text-base md:text-lg px-6 md:px-8 py-3 md:py-4 w-full sm:w-auto">
-                <Link href="/properties">استكشف العقارات</Link>
-              </Button>
-              <Button asChild variant="outline" size="lg" className="text-base md:text-lg px-6 md:px-8 py-3 md:py-4 bg-white/10 border-white/20 text-white hover:bg-white/20 w-full sm:w-auto">
-                <Link href="/map">الخريطة العقارية</Link>
-              </Button>
-              <Button asChild variant="outline" size="lg" className="text-base md:text-lg px-6 md:px-8 py-3 md:py-4 bg-white/10 border-white/20 text-white hover:bg-white/20 w-full sm:w-auto">
-                <Link href="/evaluation">اطلب تقييم عقارك</Link>
-              </Button>
-            </div>
           </div>
         </section>
 
