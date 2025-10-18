@@ -111,17 +111,17 @@ export default function Header() {
           >
             {/* خلفية بتدرج وهوية */}
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-            <div className="pointer-events-none absolute inset-0 [mask-image:radial-gradient(ellipse_at_80%_20%,black,transparent_60%)]">
-              <div className="absolute right-0 top-0 h-72 w-72 rounded-full blur-3xl opacity-30 bg-aknan-500" />
-              <div className="absolute left-1/3 bottom-0 h-52 w-52 rounded-full blur-3xl opacity-20 bg-aknan-600" />
+            <div className="pointer-events-none absolute inset-0 [mask-image:radial-gradient(ellipse_at_20%_20%,black,transparent_60%)]">
+              <div className="absolute left-0 top-0 h-72 w-72 rounded-full blur-3xl opacity-30 bg-aknan-500" />
+              <div className="absolute right-1/3 bottom-0 h-52 w-52 rounded-full blur-3xl opacity-20 bg-aknan-600" />
             </div>
 
             {/* اللوح */}
             <aside
-              className="absolute inset-y-0 right-0 w-[92%] xs:w-[86%] max-w-sm
+              className="absolute inset-y-0 left-0 w-[92%] xs:w-[86%] max-w-sm
                          bg-gradient-to-b from-neutral-950/95 to-neutral-900/90
-                         border-l border-white/10 shadow-2xl
-                         animate-[slideIn_.25s_ease-out] focus:outline-none"
+                         border-r border-white/10 shadow-2xl
+                         animate-[slideInLeft_.25s_ease-out] focus:outline-none"
             >
               {/* رأس اللوح */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
