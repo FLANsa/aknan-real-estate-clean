@@ -54,7 +54,7 @@ export default function Home() {
               autoPlay
               muted
               playsInline
-              className="w-full h-full object-cover scale-105 transition-opacity duration-1000 ease-in-out"
+              className="w-full h-full object-cover scale-105 transition-opacity duration-2000 ease-in-out"
               poster="/hero.jpg"
               preload="metadata"
               onEnded={() => {
@@ -75,7 +75,7 @@ export default function Home() {
               id="hero-video-2"
               muted
               playsInline
-              className="w-full h-full object-cover scale-105 transition-opacity duration-1000 ease-in-out absolute inset-0 opacity-0"
+              className="w-full h-full object-cover scale-105 transition-opacity duration-2000 ease-in-out absolute inset-0 opacity-0"
               preload="metadata"
               onEnded={() => {
                 const video1 = document.getElementById('hero-video-1') as HTMLVideoElement;
