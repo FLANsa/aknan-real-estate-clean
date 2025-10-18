@@ -45,7 +45,7 @@ export default function Home() {
       
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative h-[50vh] md:h-[60vh] lg:h-[70vh] flex items-center justify-center overflow-hidden">
+        <section className="relative h-[85vh] md:h-[95vh] lg:h-[100vh] flex items-center justify-center overflow-hidden">
           <div className="absolute inset-0">
             <video
               autoPlay
