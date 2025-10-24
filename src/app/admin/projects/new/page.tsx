@@ -1,143 +1,244 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { projectSchema, ProjectFormData } from '@/lib/schemas/map';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { createProject } from '../actions';
-import LocationPicker from '@/components/LocationPicker';
+import { GoogleMap, useJsApiLoader, DrawingManager } from '@react-google-maps/api';
+import { GOOGLE_MAPS_API_KEY, GOOGLE_MAPS_LIBRARIES } from '@/lib/google-maps-config';
+import { Coordinates } from '@/types/map';
 
 export default function NewProjectPage() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
   const router = useRouter();
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    location: { lat: 24.7136, lng: 46.6753 } as Coordinates, // Riyadh default
+    zoom: 15,
+    boundary: [] as Coordinates[],
+  });
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [drawingManager, setDrawingManager] = useState<google.maps.drawing.DrawingManager | null>(null);
+  const [saving, setSaving] = useState(false);
+  const mapRef = useRef<google.maps.Map | null>(null);
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors },
-  } = useForm<ProjectFormData>({
-    resolver: zodResolver(projectSchema),
-    defaultValues: {
-      name: '',
-      location: { lat: 26.3260, lng: 43.9750 }, // Default to Buraydah
-      zoom: 15,
-      description: '',
-    },
+  const { isLoaded } = useJsApiLoader({
+    id: 'new-project-map-loader',
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    libraries: [...GOOGLE_MAPS_LIBRARIES],
   });
 
-  const watchedLocation = watch('location');
+  const handleDrawingManagerLoad = (drawingManager: google.maps.drawing.DrawingManager) => {
+    setDrawingManager(drawingManager);
+  };
 
-  const onSubmit = async (data: ProjectFormData) => {
-    setIsSubmitting(true);
-    setError('');
+  const handlePolygonComplete = (polygon: google.maps.Polygon) => {
+    const path = polygon.getPath();
+    const coordinates: Coordinates[] = [];
+    
+    for (let i = 0; i < path.getLength(); i++) {
+      const point = path.getAt(i);
+      coordinates.push({
+        lat: point.lat(),
+        lng: point.lng(),
+      });
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      boundary: coordinates,
+    }));
+    
+    setIsDrawing(false);
+    drawingManager?.setDrawingMode(null);
+  };
+
+  const startDrawing = () => {
+    setIsDrawing(true);
+    drawingManager?.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
+  };
+
+  const clearBoundary = () => {
+    setFormData(prev => ({
+      ...prev,
+      boundary: [],
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
 
     try {
-      const result = await createProject(data);
+      const response = await fetch('/api/admin/projects', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
 
-      if (result.success) {
-        router.push('/admin/projects');
+      const data = await response.json();
+      
+      if (response.ok) {
+        router.push(`/admin/projects/${data.id}`);
       } else {
-        setError(result.error || 'حدث خطأ أثناء إنشاء المشروع');
+        alert('حدث خطأ أثناء إنشاء المشروع');
       }
     } catch (error) {
       console.error('Error creating project:', error);
-      setError('حدث خطأ غير متوقع');
+      alert('حدث خطأ أثناء إنشاء المشروع');
     } finally {
-      setIsSubmitting(false);
+      setSaving(false);
     }
   };
 
+  if (!isLoaded) {
+    return (
+      <div className="p-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
+          <div className="h-96 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">إنشاء مشروع جديد</h1>
-        <Button variant="outline" onClick={() => router.back()}>
-          العودة
-        </Button>
+    <div className="p-6">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">إنشاء مشروع جديد</h1>
+        <p className="text-gray-600">أدخل بيانات المشروع وارسم حدود البلوك السكني</p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        {/* Project Name */}
-        <Card>
-          <CardHeader>
-            <CardTitle>المعلومات الأساسية</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">اسم المشروع *</Label>
-              <Input
-                id="name"
-                {...register('name')}
-                placeholder="مثال: مخطط بريدة الجديد"
-                autoComplete="off"
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Form Fields */}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                اسم المشروع *
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="مثال: مشروع النخيل السكني"
               />
-              {errors.name && (
-                <p className="text-sm text-destructive">{errors.name.message}</p>
-              )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">الوصف</Label>
-              <Textarea
-                id="description"
-                {...register('description')}
-                placeholder="وصف المشروع..."
-                rows={3}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                وصف المشروع
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                rows={4}
+                placeholder="وصف مختصر عن المشروع..."
               />
-              {errors.description && (
-                <p className="text-sm text-destructive">{errors.description.message}</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                مستوى التقريب
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="20"
+                value={formData.zoom}
+                onChange={(e) => setFormData(prev => ({ ...prev, zoom: parseInt(e.target.value) }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            {/* Drawing Controls */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                حدود البلوك السكني
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={startDrawing}
+                  disabled={isDrawing}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                >
+                  {isDrawing ? 'ارسم على الخريطة...' : 'بدء الرسم'}
+                </button>
+                <button
+                  type="button"
+                  onClick={clearBoundary}
+                  disabled={formData.boundary.length === 0}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                >
+                  مسح الحدود
+                </button>
+              </div>
+              {formData.boundary.length > 0 && (
+                <p className="text-sm text-green-600">
+                  تم رسم الحدود بنجاح ({formData.boundary.length} نقطة)
+                </p>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Location Selection */}
-        <LocationPicker
-          center={watchedLocation}
-          zoom={watch('zoom')}
-          onLocationChange={(location, zoom) => {
-            setValue('location.lat', location.lat);
-            setValue('location.lng', location.lng);
-            setValue('zoom', zoom);
-          }}
-          disabled={isSubmitting}
-        />
+          {/* Map */}
+          <div className="space-y-4">
+            <label className="block text-sm font-medium text-gray-700">
+              الخريطة
+            </label>
+            <div className="h-96 rounded-lg overflow-hidden border">
+              <GoogleMap
+                mapContainerStyle={{ width: '100%', height: '100%' }}
+                center={formData.location}
+                zoom={formData.zoom}
+                onLoad={(map) => {
+                  mapRef.current = map;
+                }}
+                options={{
+                  streetViewControl: false,
+                  mapTypeControl: false,
+                  fullscreenControl: false,
+                }}
+              >
+                <DrawingManager
+                  onLoad={handleDrawingManagerLoad}
+                  onPolygonComplete={handlePolygonComplete}
+                  options={{
+                    drawingControl: false,
+                    polygonOptions: {
+                      fillColor: 'transparent',
+                      fillOpacity: 0,
+                      strokeColor: '#000000',
+                      strokeOpacity: 1,
+                      strokeWeight: 3,
+                    },
+                  }}
+                />
+              </GoogleMap>
+            </div>
+          </div>
+        </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-2 pt-4">
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            className="flex-1"
-          >
-            {isSubmitting ? 'جاري الإنشاء...' : 'إنشاء المشروع'}
-          </Button>
-          <Button
+        {/* Submit Button */}
+        <div className="flex justify-end gap-4">
+          <button
             type="button"
-            variant="outline"
             onClick={() => router.back()}
-            disabled={isSubmitting}
-            className="flex-1"
+            className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             إلغاء
-          </Button>
+          </button>
+          <button
+            type="submit"
+            disabled={saving || !formData.name}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            {saving ? 'جاري الحفظ...' : 'إنشاء المشروع'}
+          </button>
         </div>
       </form>
     </div>

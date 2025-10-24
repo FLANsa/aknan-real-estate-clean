@@ -9,13 +9,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { X, Filter } from 'lucide-react';
 import { PROPERTY_PURPOSE_LABELS, PROPERTY_TYPE_LABELS, PROPERTY_STATUS_LABELS } from '@/types/property';
+import { Project } from '@/types/map';
 
 interface PropertyFiltersProps {
   cities: string[];
   districts: string[];
+  projects: Project[];
 }
 
-export default function PropertyFilters({ cities, districts }: PropertyFiltersProps) {
+export default function PropertyFilters({ cities, districts, projects }: PropertyFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -25,6 +27,7 @@ export default function PropertyFilters({ cities, districts }: PropertyFiltersPr
     type: searchParams.get('type') || '',
     purpose: searchParams.get('purpose') || '',
     status: searchParams.get('status') || '',
+    projectId: searchParams.get('projectId') || '',
     minPrice: searchParams.get('minPrice') || '',
     maxPrice: searchParams.get('maxPrice') || '',
     minArea: searchParams.get('minArea') || '',
@@ -63,6 +66,7 @@ export default function PropertyFilters({ cities, districts }: PropertyFiltersPr
       type: '',
       purpose: '',
       status: '',
+      projectId: '',
       minPrice: '',
       maxPrice: '',
       minArea: '',
@@ -193,6 +197,24 @@ export default function PropertyFilters({ cities, districts }: PropertyFiltersPr
                     {Object.entries(PROPERTY_STATUS_LABELS).map(([value, label]) => (
                       <SelectItem key={value} value={value}>
                         {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Project */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">المشروع</label>
+                <Select value={filters.projectId} onValueChange={(value) => updateFilters({ projectId: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="اختر المشروع" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">جميع المشاريع</SelectItem>
+                    {projects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

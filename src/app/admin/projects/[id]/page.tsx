@@ -1,360 +1,478 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { GoogleMap, useJsApiLoader, Polygon, DrawingManager, InfoWindow } from '@react-google-maps/api';
+import { GOOGLE_MAPS_API_KEY, GOOGLE_MAPS_LIBRARIES } from '@/lib/google-maps-config';
+import { Project, Plot, PlotFormData, PLOT_STATUS_COLORS, PLOT_STATUS_LABELS } from '@/types/map';
 
-export const dynamic = 'force-dynamic';
-import { useRouter } from 'next/navigation';
-import { getProject } from '../actions';
-import { getProjectPlots, getAvailableProperties, createPlot, updatePlot, deletePlot } from './actions';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { MapPin, Plus, Eye, BarChart3, Calendar, Edit, Trash2 } from 'lucide-react';
-import { PLOT_STATUS_LABELS, PLOT_STATUS_COLORS } from '@/types/map';
-import InteractiveMap from '@/components/InteractiveMap';
-import PlotForm from '@/components/PlotForm';
-import { formatArea, formatPerimeter } from '@/lib/google-maps';
-import { Plot, Coordinates, Project } from '@/types/map';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-
-interface ProjectManagementPageProps {
-  params: Promise<{ id: string }>;
-}
-
-export default function ProjectManagementPage({ params }: ProjectManagementPageProps) {
+export default function ProjectManagePage() {
+  const params = useParams();
   const router = useRouter();
+  const projectId = params.id as string;
+  
   const [project, setProject] = useState<Project | null>(null);
   const [plots, setPlots] = useState<Plot[]>([]);
-  const [availableProperties, setAvailableProperties] = useState<Array<{ id: string; titleAr: string }>>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [drawingManager, setDrawingManager] = useState<google.maps.drawing.DrawingManager | null>(null);
   const [selectedPlot, setSelectedPlot] = useState<Plot | null>(null);
   const [showPlotForm, setShowPlotForm] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [plotFormData, setPlotFormData] = useState<PlotFormData>({
+    projectId: projectId,
+    plotNumber: '',
+    manualArea: 0,
+    price: 0,
+    polygon: [],
+    images: [],
+    status: 'available',
+    notes: '',
+  });
+  const [saving, setSaving] = useState(false);
+  const mapRef = useRef<google.maps.Map | null>(null);
 
-  const projectId = params.then(p => p.id);
+  const { isLoaded } = useJsApiLoader({
+    id: 'project-manage-map-loader',
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    libraries: [...GOOGLE_MAPS_LIBRARIES],
+  });
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        setLoading(true);
-        const resolvedParams = await params;
-        const projectId = resolvedParams.id;
-
-        const [projectResult, plotsResult, propertiesResult] = await Promise.all([
-          getProject(projectId),
-          getProjectPlots(projectId),
-          getAvailableProperties(),
-        ]);
-
-        if (!projectResult.success || !projectResult.data) {
-          setError('المشروع غير موجود');
-          return;
-        }
-
-        setProject(projectResult.data);
-        setPlots(plotsResult.success ? plotsResult.data || [] : []);
-        setAvailableProperties(propertiesResult.success ? propertiesResult.data || [] : []);
-      } catch (err) {
-        setError('حدث خطأ أثناء تحميل البيانات');
-        console.error('Error loading data:', err);
-      } finally {
-        setLoading(false);
-      }
+    if (projectId) {
+      fetchProjectData();
     }
+  }, [projectId]);
 
-    loadData();
-  }, [params]);
-
-  const handlePlotDraw = useCallback(async (polygon: Coordinates[], plotNumber: string) => {
-    if (!project) return;
-
-    setIsSubmitting(true);
+  const fetchProjectData = async () => {
     try {
-      const result = await createPlot({
-        projectId: project.id,
-        number: plotNumber,
-        status: 'available',
-        price: 0,
-        currency: 'SAR',
-        polygon,
-        dimensions: {
-          area: 0, // Will be calculated by the server
-          perimeter: 0,
+      const response = await fetch(`/api/admin/projects/${projectId}`);
+      const data = await response.json();
+      
+      if (response.ok) {
+        setProject(data.project);
+        setPlots(data.plots || []);
+      } else {
+        alert('المشروع غير موجود');
+        router.push('/admin/projects');
+      }
+    } catch (error) {
+      console.error('Error fetching project:', error);
+      alert('حدث خطأ أثناء جلب بيانات المشروع');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDrawingManagerLoad = (drawingManager: google.maps.drawing.DrawingManager) => {
+    setDrawingManager(drawingManager);
+  };
+
+  const handlePolygonComplete = (polygon: google.maps.Polygon) => {
+    const path = polygon.getPath();
+    const coordinates = [];
+    
+    for (let i = 0; i < path.getLength(); i++) {
+      const point = path.getAt(i);
+      coordinates.push({
+        lat: point.lat(),
+        lng: point.lng(),
+      });
+    }
+    
+    setPlotFormData(prev => ({
+      ...prev,
+      polygon: coordinates,
+    }));
+    
+    setIsDrawing(false);
+    setShowPlotForm(true);
+    drawingManager?.setDrawingMode(null);
+  };
+
+  const startDrawing = () => {
+    setIsDrawing(true);
+    drawingManager?.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
+  };
+
+  const handlePlotSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+
+    try {
+      const response = await fetch('/api/admin/plots', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        notes: '',
+        body: JSON.stringify(plotFormData),
       });
 
-      if (result.success && result.data) {
-        setPlots(prev => [...prev, result.data!]);
-        setSelectedPlot(null);
+      const data = await response.json();
+      
+      if (response.ok) {
+        // Refresh plots data
+        await fetchProjectData();
         setShowPlotForm(false);
+        setPlotFormData({
+          projectId: projectId,
+          plotNumber: '',
+          manualArea: 0,
+          price: 0,
+          polygon: [],
+          images: [],
+          status: 'available',
+          notes: '',
+        });
       } else {
-        setError(result.error || 'فشل إنشاء القطعة');
+        alert('حدث خطأ أثناء إنشاء القطعة');
       }
-    } catch (err) {
-      setError('حدث خطأ أثناء إنشاء القطعة');
-      console.error('Error creating plot:', err);
+    } catch (error) {
+      console.error('Error creating plot:', error);
+      alert('حدث خطأ أثناء إنشاء القطعة');
     } finally {
-      setIsSubmitting(false);
+      setSaving(false);
     }
-  }, [project]);
+  };
 
-  const handlePlotClick = useCallback((plot: Plot) => {
+  const handlePlotClick = (plot: Plot) => {
     setSelectedPlot(plot);
-    setShowPlotForm(true);
-  }, []);
+  };
 
-  const handlePlotUpdate = useCallback(async (updatedPlot: Plot) => {
-    setIsSubmitting(true);
-    try {
-      const result = await updatePlot(updatedPlot.id, updatedPlot);
-      if (result.success && result.data) {
-        setPlots(prev => prev.map(p => p.id === updatedPlot.id ? result.data! : p));
-        setSelectedPlot(null);
-        setShowPlotForm(false);
-      } else {
-        setError(result.error || 'فشل تحديث القطعة');
-      }
-    } catch (err) {
-      setError('حدث خطأ أثناء تحديث القطعة');
-      console.error('Error updating plot:', err);
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, []);
-
-  const handlePlotDelete = useCallback(async (plotId: string) => {
-    if (!confirm('هل أنت متأكد من حذف هذه القطعة؟')) return;
-
-    setIsSubmitting(true);
-    try {
-      const result = await deletePlot(plotId);
-      if (result.success) {
-        setPlots(prev => prev.filter(p => p.id !== plotId));
-        setSelectedPlot(null);
-        setShowPlotForm(false);
-      } else {
-        setError(result.error || 'فشل حذف القطعة');
-      }
-    } catch (err) {
-      setError('حدث خطأ أثناء حذف القطعة');
-      console.error('Error deleting plot:', err);
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, []);
-
-  const handleCancelPlotForm = useCallback(() => {
-    setSelectedPlot(null);
-    setShowPlotForm(false);
-  }, []);
+  const getPlotCenter = (polygon: any[]) => {
+    if (polygon.length === 0) return null;
+    
+    let lat = 0, lng = 0;
+    polygon.forEach(point => {
+      lat += point.lat;
+      lng += point.lng;
+    });
+    
+    return {
+      lat: lat / polygon.length,
+      lng: lng / polygon.length,
+    };
+  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-          <p>جاري تحميل المشروع...</p>
+      <div className="p-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
+          <div className="h-96 bg-gray-200 rounded"></div>
         </div>
       </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <Alert variant="destructive">
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
     );
   }
 
   if (!project) {
     return (
-      <Alert variant="destructive">
-        <AlertDescription>المشروع غير موجود</AlertDescription>
-      </Alert>
+      <div className="p-6">
+        <div className="text-center py-12">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">المشروع غير موجود</h1>
+          <button
+            onClick={() => router.push('/admin/projects')}
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700"
+          >
+            العودة للمشاريع
+          </button>
+        </div>
+      </div>
     );
   }
 
-  // Calculate statistics
-  const stats = {
-    total: plots.length,
-    available: plots.filter(p => p.status === 'available').length,
-    sold: plots.filter(p => p.status === 'sold').length,
-    reserved: plots.filter(p => p.status === 'reserved').length,
-  };
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">{project.name}</h1>
-          <p className="text-muted-foreground">{project.description || 'لا يوجد وصف'}</p>
+    <div className="p-6">
+      {/* Project Header */}
+      <div className="mb-6">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
+            {project.description && (
+              <p className="text-gray-600 mt-2">{project.description}</p>
+            )}
+          </div>
+          <button
+            onClick={() => router.push('/admin/projects')}
+            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
+          >
+            العودة للمشاريع
+          </button>
         </div>
-        <Button variant="outline" onClick={() => router.push('/admin/projects')}>
-          العودة للمشاريع
-        </Button>
+
+        {/* Project Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="text-2xl font-bold text-blue-600">{project.plotsCount}</div>
+            <div className="text-gray-600">إجمالي القطع</div>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="text-2xl font-bold text-green-600">{project.availablePlotsCount}</div>
+            <div className="text-gray-600">القطع المتاحة</div>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="text-2xl font-bold text-red-600">
+              {project.plotsCount - project.availablePlotsCount}
+            </div>
+            <div className="text-gray-600">القطع المباعة</div>
+          </div>
+        </div>
       </div>
 
-      {/* Statistics */}
-      <Card>
-        <CardHeader>
-          <CardTitle>إحصائيات المشروع</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="flex items-center space-x-2 rtl:space-x-reverse">
-              <BarChart3 className="h-5 w-5 text-primary" />
-              <div>
-                <p className="text-sm text-muted-foreground">إجمالي القطع</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
-              </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Map */}
+        <div className="lg:col-span-2">
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">خريطة المشروع</h2>
+              <button
+                onClick={startDrawing}
+                disabled={isDrawing}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
+              >
+                {isDrawing ? 'ارسم القطعة...' : 'إضافة قطعة'}
+              </button>
             </div>
-            <div className="flex items-center space-x-2 rtl:space-x-reverse">
-              <Badge style={{ backgroundColor: PLOT_STATUS_COLORS.available }} className="h-5 w-5 flex items-center justify-center text-white"></Badge>
-              <div>
-                <p className="text-sm text-muted-foreground">متاحة</p>
-                <p className="text-2xl font-bold">{stats.available}</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2 rtl:space-x-reverse">
-              <Badge style={{ backgroundColor: PLOT_STATUS_COLORS.sold }} className="h-5 w-5 flex items-center justify-center text-white"></Badge>
-              <div>
-                <p className="text-sm text-muted-foreground">مباعة</p>
-                <p className="text-2xl font-bold">{stats.sold}</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2 rtl:space-x-reverse">
-              <Badge style={{ backgroundColor: PLOT_STATUS_COLORS.reserved }} className="h-5 w-5 flex items-center justify-center text-white"></Badge>
-              <div>
-                <p className="text-sm text-muted-foreground">محجوزة</p>
-                <p className="text-2xl font-bold">{stats.reserved}</p>
-              </div>
+
+            <div className="h-96 rounded-lg overflow-hidden border">
+              {isLoaded && (
+                <GoogleMap
+                  mapContainerStyle={{ width: '100%', height: '100%' }}
+                  center={project.location}
+                  zoom={project.zoom}
+                  onLoad={(map) => {
+                    mapRef.current = map;
+                  }}
+                  options={{
+                    streetViewControl: false,
+                    mapTypeControl: false,
+                    fullscreenControl: false,
+                  }}
+                >
+                  {/* Project Boundary */}
+                  {project.boundary && project.boundary.length > 0 && (
+                    <Polygon
+                      paths={project.boundary}
+                      options={{
+                        fillColor: 'transparent',
+                        fillOpacity: 0,
+                        strokeColor: '#000000',
+                        strokeOpacity: 1,
+                        strokeWeight: 3,
+                      }}
+                    />
+                  )}
+
+                  {/* Plots */}
+                  {plots.map((plot) => {
+                    const center = getPlotCenter(plot.polygon);
+                    if (!center) return null;
+
+                    return (
+                      <div key={plot.id}>
+                        <Polygon
+                          paths={plot.polygon}
+                          options={{
+                            fillColor: PLOT_STATUS_COLORS[plot.status],
+                            fillOpacity: 0.3,
+                            strokeColor: PLOT_STATUS_COLORS[plot.status],
+                            strokeOpacity: 1,
+                            strokeWeight: 2,
+                          }}
+                          onClick={() => handlePlotClick(plot)}
+                        />
+                      </div>
+                    );
+                  })}
+
+                  {/* Drawing Manager */}
+                  <DrawingManager
+                    onLoad={handleDrawingManagerLoad}
+                    onPolygonComplete={handlePolygonComplete}
+                    options={{
+                      drawingControl: false,
+                      polygonOptions: {
+                        fillColor: 'transparent',
+                        fillOpacity: 0,
+                        strokeColor: '#000000',
+                        strokeOpacity: 1,
+                        strokeWeight: 3,
+                      },
+                    }}
+                  />
+
+                  {/* InfoWindow */}
+                  {selectedPlot && (
+                    <InfoWindow
+                      position={getPlotCenter(selectedPlot.polygon)}
+                      onCloseClick={() => setSelectedPlot(null)}
+                    >
+                      <div className="p-2">
+                        <h3 className="font-bold text-lg">{project.name}</h3>
+                        <div className="space-y-1 text-sm">
+                          <div><strong>رقم القطعة:</strong> {selectedPlot.plotNumber}</div>
+                          <div><strong>المساحة:</strong> {selectedPlot.manualArea} م²</div>
+                          <div><strong>السعر:</strong> {selectedPlot.price.toLocaleString()} ريال</div>
+                          <div><strong>الحالة:</strong> {PLOT_STATUS_LABELS[selectedPlot.status]}</div>
+                        </div>
+                        {selectedPlot.images.length > 0 && (
+                          <div className="mt-2">
+                            <img 
+                              src={selectedPlot.images[0]} 
+                              alt="صورة القطعة"
+                              className="w-20 h-20 object-cover rounded"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </InfoWindow>
+                  )}
+                </GoogleMap>
+              )}
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Interactive Map */}
-      <Card>
-        <CardHeader>
-          <CardTitle>الخريطة التفاعلية</CardTitle>
-          <CardDescription>
-            اضغط على الخريطة لرسم القطع الجديدة أو انقر على القطع الموجودة لعرض التفاصيل
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <InteractiveMap
-            project={project}
-            plots={plots}
-            mode="edit"
-            onPlotDraw={handlePlotDraw}
-            onPlotClick={handlePlotClick}
-            onPlotUpdate={handlePlotUpdate}
-            onPlotDelete={handlePlotDelete}
-            selectedPlotId={selectedPlot?.id}
-            className="rounded-lg border"
-          />
-        </CardContent>
-      </Card>
+        {/* Plot Form */}
+        <div className="lg:col-span-1">
+          {showPlotForm ? (
+            <div className="bg-white rounded-lg shadow p-4">
+              <h3 className="text-lg font-semibold mb-4">بيانات القطعة الجديدة</h3>
+              
+              <form onSubmit={handlePlotSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    رقم القطعة *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={plotFormData.plotNumber}
+                    onChange={(e) => setPlotFormData(prev => ({ ...prev, plotNumber: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="مثال: قطعة 1"
+                  />
+                </div>
 
-      {/* Plot Form */}
-      {showPlotForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {selectedPlot ? `تعديل القطعة: ${selectedPlot.number}` : 'إضافة قطعة جديدة'}
-            </CardTitle>
-            <CardDescription>
-              {selectedPlot ? 'تعديل تفاصيل القطعة المختارة.' : 'أدخل تفاصيل القطعة الجديدة بعد رسمها على الخريطة.'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <PlotForm
-              initialData={selectedPlot || undefined}
-              projectId={project.id}
-              properties={availableProperties}
-              onSubmit={selectedPlot ? handlePlotUpdate : handlePlotDraw}
-              onCancel={handleCancelPlotForm}
-              isSubmitting={isSubmitting}
-              error={error}
-            />
-          </CardContent>
-        </Card>
-      )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    المساحة (م²) *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    step="0.01"
+                    value={plotFormData.manualArea}
+                    onChange={(e) => setPlotFormData(prev => ({ ...prev, manualArea: parseFloat(e.target.value) }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="500"
+                  />
+                </div>
 
-      {/* Plots List */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>قائمة القطع</CardTitle>
-            <div className="flex gap-2">
-              <Button onClick={() => setShowPlotForm(true)}>
-                <Plus className="h-4 w-4 ml-2" />
-                إضافة قطعة جديدة
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {plots.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <MapPin className="h-12 w-12 mx-auto mb-4" />
-              <p>لا توجد قطع في هذا المشروع حتى الآن</p>
-              <p className="text-sm">ارسم قطعة على الخريطة أو اضغط على &quot;إضافة قطعة جديدة&quot;</p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    السعر (ريال) *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    value={plotFormData.price}
+                    onChange={(e) => setPlotFormData(prev => ({ ...prev, price: parseInt(e.target.value) }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="500000"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    الحالة
+                  </label>
+                  <select
+                    value={plotFormData.status}
+                    onChange={(e) => setPlotFormData(prev => ({ ...prev, status: e.target.value as any }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="available">متاح</option>
+                    <option value="sold">مباع</option>
+                    <option value="reserved">محجوز</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    ملاحظات
+                  </label>
+                  <textarea
+                    value={plotFormData.notes}
+                    onChange={(e) => setPlotFormData(prev => ({ ...prev, notes: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    rows={3}
+                    placeholder="ملاحظات إضافية..."
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowPlotForm(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving || plotFormData.polygon.length === 0}
+                    className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {saving ? 'جاري الحفظ...' : 'حفظ القطعة'}
+                  </button>
+                </div>
+              </form>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>رقم القطعة</TableHead>
-                  <TableHead>الحالة</TableHead>
-                  <TableHead>السعر</TableHead>
-                  <TableHead>المساحة</TableHead>
-                  <TableHead>المحيط</TableHead>
-                  <TableHead>مرتبط بعقار</TableHead>
-                  <TableHead className="text-right">الإجراءات</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {plots.map((plot) => (
-                  <TableRow key={plot.id}>
-                    <TableCell className="font-medium">{plot.number}</TableCell>
-                    <TableCell>
-                      <Badge style={{ backgroundColor: PLOT_STATUS_COLORS[plot.status] }} className="text-white">
-                        {PLOT_STATUS_LABELS[plot.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{plot.price.toLocaleString()} {plot.currency}</TableCell>
-                    <TableCell>{formatArea(plot.dimensions.area)}</TableCell>
-                    <TableCell>{formatPerimeter(plot.dimensions.perimeter)}</TableCell>
-                    <TableCell>
-                      {plot.propertyId ? (
-                        <Badge variant="outline">{plot.propertyId}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" onClick={() => handlePlotClick(plot)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="destructive" size="sm" onClick={() => handlePlotDelete(plot.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+            <div className="bg-white rounded-lg shadow p-4">
+              <h3 className="text-lg font-semibold mb-4">القطع الموجودة</h3>
+              
+              {plots.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  لا توجد قطع بعد
+                  <br />
+                  <button
+                    onClick={startDrawing}
+                    className="mt-2 text-blue-600 hover:text-blue-700"
+                  >
+                    إضافة أول قطعة
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {plots.map((plot) => (
+                    <div
+                      key={plot.id}
+                      className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                      onClick={() => handlePlotClick(plot)}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="font-medium">قطعة {plot.plotNumber}</div>
+                          <div className="text-sm text-gray-600">
+                            {plot.manualArea} م² - {plot.price.toLocaleString()} ريال
+                          </div>
+                        </div>
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: PLOT_STATUS_COLORS[plot.status] }}
+                        />
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

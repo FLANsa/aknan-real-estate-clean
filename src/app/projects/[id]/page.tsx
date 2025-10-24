@@ -1,300 +1,309 @@
-import { getPublicProject, getPublicProjectPlots } from './actions';
-import { notFound } from 'next/navigation';
-import { Metadata } from 'next';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { MapPin, BarChart3, Calendar, Phone, MessageCircle } from 'lucide-react';
-import { PLOT_STATUS_LABELS, PLOT_STATUS_COLORS } from '@/types/map';
-import InteractiveMap from '@/components/InteractiveMap';
-import { formatArea, formatPerimeter } from '@/lib/google-maps';
+'use client';
 
-interface PublicProjectPageProps {
-  params: Promise<{ id: string }>;
-}
+import { useState, useEffect, useRef } from 'react';
+import { useParams } from 'next/navigation';
+import Link from 'next/link';
+import { GoogleMap, useJsApiLoader, Polygon, InfoWindow } from '@react-google-maps/api';
+import { GOOGLE_MAPS_API_KEY, GOOGLE_MAPS_LIBRARIES } from '@/lib/google-maps-config';
+import { Project, Plot, PLOT_STATUS_COLORS, PLOT_STATUS_LABELS } from '@/types/map';
+import { Property } from '@/types/property';
 
-// generateStaticParams not needed for standalone mode
-
-export async function generateMetadata({ params }: PublicProjectPageProps): Promise<Metadata> {
-  const resolvedParams = await params;
-  const result = await getPublicProject(resolvedParams.id);
+export default function ProjectClientPage() {
+  const params = useParams();
+  const projectId = params.id as string;
   
-  if (!result.success || !result.data) {
+  const [project, setProject] = useState<Project | null>(null);
+  const [plots, setPlots] = useState<Plot[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedPlot, setSelectedPlot] = useState<Plot | null>(null);
+  const mapRef = useRef<google.maps.Map | null>(null);
+
+  const { isLoaded } = useJsApiLoader({
+    id: 'project-client-map-loader',
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    libraries: [...GOOGLE_MAPS_LIBRARIES],
+  });
+
+  useEffect(() => {
+    if (projectId) {
+      fetchProjectData();
+    }
+  }, [projectId]);
+
+  const fetchProjectData = async () => {
+    try {
+      const response = await fetch(`/api/projects?id=${projectId}`);
+      const data = await response.json();
+      
+      if (response.ok) {
+        setProject(data.project);
+        
+        // Fetch plots for this project
+        const plotsResponse = await fetch(`/api/admin/projects/${projectId}`);
+        const plotsData = await plotsResponse.json();
+        setPlots(plotsData.plots || []);
+        
+        // Fetch properties for this project
+        const propertiesResponse = await fetch(`/api/properties?projectId=${projectId}`);
+        const propertiesData = await propertiesResponse.json();
+        setProperties(propertiesData.properties || []);
+      } else {
+        console.error('Project not found');
+      }
+    } catch (error) {
+      console.error('Error fetching project:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getPlotCenter = (polygon: any[]) => {
+    if (polygon.length === 0) return null;
+    
+    let lat = 0, lng = 0;
+    polygon.forEach(point => {
+      lat += point.lat;
+      lng += point.lng;
+    });
+    
     return {
-      title: 'المشروع غير موجود',
+      lat: lat / polygon.length,
+      lng: lng / polygon.length,
     };
-  }
-
-  const project = result.data;
-  
-  return {
-    title: project.name,
-    description: project.description || `مشروع ${project.name} - عرض القطع المتاحة`,
-  };
-}
-
-export default async function PublicProjectPage({ params }: PublicProjectPageProps) {
-  const resolvedParams = await params;
-  
-  const projectResult = await getPublicProject(resolvedParams.id);
-  const plotsResult = await getPublicProjectPlots(resolvedParams.id);
-
-  if (!projectResult.success || !projectResult.data) {
-    notFound();
-  }
-
-  const project = projectResult.data;
-  const allPlots = plotsResult.success ? plotsResult.data || [] : [];
-  
-  // Filter to show only available plots to public
-  const availablePlots = allPlots.filter(plot => plot.status === 'available');
-
-  // Calculate statistics
-  const stats = {
-    total: allPlots.length,
-    available: availablePlots.length,
-    sold: allPlots.filter(p => p.status === 'sold').length,
-    reserved: allPlots.filter(p => p.status === 'reserved').length,
   };
 
-  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP;
-  const phoneNumber = process.env.NEXT_PUBLIC_PHONE;
+  const getPlotProperties = (plotId: string) => {
+    return properties.filter(prop => prop.plotId === plotId);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="animate-pulse">
+          <div className="h-64 bg-gray-200"></div>
+          <div className="p-6">
+            <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
+            <div className="h-96 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">المشروع غير موجود</h1>
+          <Link
+            href="/properties"
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700"
+          >
+            العودة للعقارات
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-      
-      <main className="flex-1 container py-8">
-        <div className="space-y-6 max-w-6xl mx-auto">
-          {/* Project Header */}
-          <div className="text-center space-y-4">
-            <h1 className="text-3xl md:text-4xl font-bold">{project.name}</h1>
+    <div className="min-h-screen bg-gray-50">
+      {/* Project Hero */}
+      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+        <div className="container mx-auto px-6 py-12">
+          <div className="max-w-4xl">
+            <h1 className="text-4xl font-bold mb-4">{project.name}</h1>
             {project.description && (
-              <p className="text-muted-foreground max-w-2xl mx-auto">
-                {project.description}
-              </p>
+              <p className="text-xl text-blue-100 mb-6">{project.description}</p>
             )}
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                <div className="text-3xl font-bold">{project.plotsCount}</div>
+                <div className="text-blue-100">إجمالي القطع</div>
           </div>
-
-          {/* Statistics */}
-          <div className="grid gap-4 md:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">إجمالي القطع</CardTitle>
-                <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.total}</div>
-                <p className="text-xs text-muted-foreground">قطعة</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">متاح</CardTitle>
-                <div className="h-4 w-4 rounded-full" style={{ backgroundColor: PLOT_STATUS_COLORS.available }} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.available}</div>
-                <p className="text-xs text-muted-foreground">قطعة</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">مباع</CardTitle>
-                <div className="h-4 w-4 rounded-full" style={{ backgroundColor: PLOT_STATUS_COLORS.sold }} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.sold}</div>
-                <p className="text-xs text-muted-foreground">قطعة</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">محجوز</CardTitle>
-                <div className="h-4 w-4 rounded-full" style={{ backgroundColor: PLOT_STATUS_COLORS.reserved }} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.reserved}</div>
-                <p className="text-xs text-muted-foreground">قطعة</p>
-              </CardContent>
-            </Card>
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                <div className="text-3xl font-bold text-green-300">{project.availablePlotsCount}</div>
+                <div className="text-blue-100">القطع المتاحة</div>
           </div>
-
-          {/* Interactive Map */}
-          <Card>
-            <CardHeader>
-              <CardTitle>خريطة المشروع</CardTitle>
-              <CardDescription>
-                انقر على القطع المتاحة لعرض التفاصيل والسعر
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <InteractiveMap
-                project={project}
-                plots={availablePlots}
-                mode="view"
-                className="rounded-lg border"
-              />
-            </CardContent>
-          </Card>
-
-          {/* Available Plots */}
-          <Card>
-            <CardHeader>
-              <CardTitle>القطع المتاحة</CardTitle>
-              <CardDescription>
-                عرض القطع المتاحة للبيع مع التفاصيل والأسعار
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {availablePlots.length === 0 ? (
-                <div className="text-center py-8">
-                  <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="text-lg font-semibold mb-2">لا توجد قطع متاحة</h3>
-                  <p className="text-muted-foreground">
-                    جميع القطع في هذا المشروع تم بيعها أو حجزها
-                  </p>
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                <div className="text-3xl font-bold text-red-300">
+                  {project.plotsCount - project.availablePlotsCount}
                 </div>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {availablePlots.map((plot) => (
-                    <Card key={plot.id} className="hover:shadow-md transition-shadow">
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg">القطعة {plot.number}</CardTitle>
-                          <Badge style={{ backgroundColor: PLOT_STATUS_COLORS[plot.status] }}>
-                            {PLOT_STATUS_LABELS[plot.status]}
-                          </Badge>
+                <div className="text-blue-100">القطع المباعة</div>
+              </div>
                         </div>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">السعر:</span>
-                            <span className="font-medium">
-                              {plot.price.toLocaleString()} {plot.currency}
-                            </span>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">المساحة:</span>
-                            <span className="font-medium">{formatArea(plot.dimensions.area)}</span>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">المحيط:</span>
-                            <span className="font-medium">{formatPerimeter(plot.dimensions.perimeter)}</span>
                           </div>
-                        </div>
 
-                        {plot.notes && (
-                          <div className="text-sm text-muted-foreground">
-                            <strong>ملاحظات:</strong> {plot.notes}
+      <div className="container mx-auto px-6 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Map */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">خريطة المشروع</h2>
+              
+              <div className="h-96 rounded-lg overflow-hidden border">
+                {isLoaded && (
+                  <GoogleMap
+                    mapContainerStyle={{ width: '100%', height: '100%' }}
+                    center={project.location}
+                    zoom={project.zoom}
+                    onLoad={(map) => {
+                      mapRef.current = map;
+                    }}
+                    options={{
+                      streetViewControl: false,
+                      mapTypeControl: false,
+                      fullscreenControl: false,
+                    }}
+                  >
+                    {/* Project Boundary */}
+                    {project.boundary && project.boundary.length > 0 && (
+                      <Polygon
+                        paths={project.boundary}
+                        options={{
+                          fillColor: 'transparent',
+                          fillOpacity: 0,
+                          strokeColor: '#000000',
+                          strokeOpacity: 1,
+                          strokeWeight: 3,
+                        }}
+                      />
+                    )}
+
+                    {/* Plots */}
+                    {plots.map((plot) => {
+                      const center = getPlotCenter(plot.polygon);
+                      if (!center) return null;
+
+                      return (
+                        <div key={plot.id}>
+                          <Polygon
+                            paths={plot.polygon}
+                            options={{
+                              fillColor: PLOT_STATUS_COLORS[plot.status],
+                              fillOpacity: 0.3,
+                              strokeColor: PLOT_STATUS_COLORS[plot.status],
+                              strokeOpacity: 1,
+                              strokeWeight: 2,
+                            }}
+                            onClick={() => setSelectedPlot(plot)}
+                          />
+                        </div>
+                      );
+                    })}
+
+                    {/* InfoWindow */}
+                    {selectedPlot && getPlotCenter(selectedPlot.polygon) && (
+                      <InfoWindow
+                        position={getPlotCenter(selectedPlot.polygon)!}
+                        onCloseClick={() => setSelectedPlot(null)}
+                      >
+                        <div className="p-3 max-w-xs">
+                          <h3 className="font-bold text-lg mb-2">{project.name}</h3>
+                          <div className="space-y-1 text-sm">
+                            <div><strong>رقم القطعة:</strong> {selectedPlot.plotNumber}</div>
+                            <div><strong>المساحة:</strong> {selectedPlot.manualArea} م²</div>
+                            <div><strong>السعر:</strong> {selectedPlot.price.toLocaleString()} ريال</div>
+                            <div><strong>الحالة:</strong> {PLOT_STATUS_LABELS[selectedPlot.status]}</div>
+                          </div>
+                          
+                          {selectedPlot.images.length > 0 && (
+                            <div className="mt-3">
+                              <img 
+                                src={selectedPlot.images[0]} 
+                                alt="صورة القطعة"
+                                className="w-full h-32 object-cover rounded"
+                              />
                           </div>
                         )}
 
-                        <div className="flex gap-2 pt-2">
-                          {whatsappNumber && (
-                            <Button
-                              asChild
-                              size="sm"
-                              className="flex-1"
-                              style={{ backgroundColor: '#25D366' }}
-                            >
-                              <a
-                                href={`https://wa.me/${whatsappNumber}?text=مرحباً، أريد الاستفسار عن القطعة ${plot.number} في مشروع ${project.name}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                          {getPlotProperties(selectedPlot.id).length > 0 && (
+                            <div className="mt-3">
+                              <Link
+                                href={`/properties/${getPlotProperties(selectedPlot.id)[0].slug}`}
+                                className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
                               >
-                                <MessageCircle className="h-4 w-4 ml-1" />
-                                واتساب
-                              </a>
-                            </Button>
-                          )}
-                          {phoneNumber && (
-                            <Button asChild variant="outline" size="sm" className="flex-1">
-                              <a href={`tel:${phoneNumber}`}>
-                                <Phone className="h-4 w-4 ml-1" />
-                                اتصال
-                              </a>
-                            </Button>
+                                عرض التفاصيل
+                              </Link>
+                            </div>
                           )}
                         </div>
-                      </CardContent>
-                    </Card>
+                      </InfoWindow>
+                    )}
+                  </GoogleMap>
+                )}
+              </div>
+
+              {/* Legend */}
+              <div className="mt-4 flex flex-wrap gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded" style={{ backgroundColor: PLOT_STATUS_COLORS.available }}></div>
+                  <span className="text-sm">متاح</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded" style={{ backgroundColor: PLOT_STATUS_COLORS.sold }}></div>
+                  <span className="text-sm">مباع</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded" style={{ backgroundColor: PLOT_STATUS_COLORS.reserved }}></div>
+                  <span className="text-sm">محجوز</span>
+                    </div>
+                  </div>
+                    </div>
+                  </div>
+
+          {/* Properties List */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">العقارات المتاحة</h2>
+              
+              {properties.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  لا توجد عقارات متاحة حالياً
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {properties.map((property) => (
+                    <Link
+                      key={property.id}
+                      href={`/properties/${property.slug}`}
+                      className="block p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex gap-4">
+                        {property.images.length > 0 && (
+                          <img
+                            src={property.images[0]}
+                            alt={property.titleAr}
+                            className="w-20 h-20 object-cover rounded"
+                          />
+                        )}
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 mb-1">{property.titleAr}</h3>
+                          <div className="text-sm text-gray-600 mb-2">
+                            {property.city} {property.district && `- ${property.district}`}
+                          </div>
+                          <div className="text-lg font-bold text-blue-600">
+                            {property.price.toLocaleString()} {property.currency}
+                          </div>
+                          {property.plotNumber && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              قطعة رقم: {property.plotNumber}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </Link>
                   ))}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Contact Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>تواصل معنا</CardTitle>
-              <CardDescription>
-                للاستفسار عن القطع المتاحة أو طلب معلومات إضافية
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <MapPin className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">موقع المشروع</p>
-                      <p className="text-sm text-muted-foreground">
-                        {project.location.lat.toFixed(6)}, {project.location.lng.toFixed(6)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">تاريخ الإنشاء</p>
-                      <p className="text-sm text-muted-foreground">
-                        {project.createdAt.toLocaleDateString('ar-SA')}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  {whatsappNumber && (
-                    <Button
-                      asChild
-                      className="w-full"
-                      style={{ backgroundColor: '#25D366' }}
-                    >
-                      <a
-                        href={`https://wa.me/${whatsappNumber}?text=مرحباً، أريد الاستفسار عن مشروع ${project.name}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <MessageCircle className="h-4 w-4 ml-2" />
-                        تواصل عبر واتساب
-                      </a>
-                    </Button>
-                  )}
-                  {phoneNumber && (
-                    <Button asChild variant="outline" className="w-full">
-                      <a href={`tel:${phoneNumber}`}>
-                        <Phone className="h-4 w-4 ml-2" />
-                        اتصل بنا
-                      </a>
-                    </Button>
                   )}
                 </div>
               </div>
-            </CardContent>
-          </Card>
         </div>
-      </main>
-      
-      <Footer />
+      </div>
     </div>
   );
 }

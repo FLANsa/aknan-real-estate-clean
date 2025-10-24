@@ -1,116 +1,110 @@
-import { requireAdmin } from '@/lib/firebase/auth';
-import { listProjects } from './actions';
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { MapPin, Plus, Eye, Edit, Calendar } from 'lucide-react';
+import { Project } from '@/types/map';
 
-export const dynamic = 'force-dynamic';
+export default function ProjectsPage() {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
 
-export default async function AdminProjectsPage() {
-  const user = await requireAdmin();
-  const result = await listProjects();
+  useEffect(() => {
+    fetchProjects();
+  }, []);
 
-  if (!result.success) {
+  const fetchProjects = async () => {
+    try {
+      const response = await fetch('/api/admin/projects');
+      const data = await response.json();
+      setProjects(data.projects || []);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">إدارة المشاريع</h1>
-          <p className="text-muted-foreground">عرض وإدارة المخططات والقطع</p>
+      <div className="p-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="bg-gray-200 rounded-lg h-48"></div>
+            ))}
+          </div>
         </div>
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-center text-destructive">
-              <p>خطأ في تحميل المشاريع: {result.error}</p>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     );
   }
 
-  const projects = result.data || [];
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">إدارة المشاريع</h1>
-          <p className="text-muted-foreground">عرض وإدارة المخططات والقطع</p>
-        </div>
-        <Button asChild>
-          <Link href="/admin/projects/new">
-            <Plus className="h-4 w-4 ml-2" />
-            إنشاء مشروع جديد
-          </Link>
-        </Button>
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-900">المشاريع السكنية</h1>
+        <Link
+          href="/admin/projects/new"
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          إنشاء مشروع جديد
+        </Link>
       </div>
 
       {projects.length === 0 ? (
-        <Card>
-          <CardContent className="p-12 text-center">
-            <MapPin className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">لا توجد مشاريع</h3>
-            <p className="text-muted-foreground mb-4">
-              ابدأ بإنشاء مشروع جديد لإدارة المخططات والقطع
-            </p>
-            <Button asChild>
-              <Link href="/admin/projects/new">
-                <Plus className="h-4 w-4 ml-2" />
-                إنشاء مشروع جديد
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="text-center py-12">
+          <div className="text-gray-500 text-lg mb-4">لا توجد مشاريع بعد</div>
+          <Link
+            href="/admin/projects/new"
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            إنشاء أول مشروع
+          </Link>
+        </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {projects.map((project) => (
-            <Card key={project.id} className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">{project.name}</CardTitle>
-                    <CardDescription className="mt-1">
-                      {project.description || 'لا يوجد وصف'}
-                    </CardDescription>
-                  </div>
-                  <Badge variant="outline">
-                    {project.zoom}x
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <MapPin className="h-4 w-4 ml-2" />
-                  <span>
-                    {project.location.lat.toFixed(4)}, {project.location.lng.toFixed(4)}
-                  </span>
-                </div>
+            <div key={project.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+              <div className="p-6">
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">{project.name}</h3>
+                {project.description && (
+                  <p className="text-gray-600 mb-4 line-clamp-2">{project.description}</p>
+                )}
                 
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <Calendar className="h-4 w-4 ml-2" />
-                  <span>
-                    أنشئ في {project.createdAt.toLocaleDateString('ar-SA')}
-                  </span>
+                <div className="space-y-2 mb-4">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">إجمالي القطع:</span>
+                    <span className="font-medium">{project.plotsCount}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">القطع المتاحة:</span>
+                    <span className="font-medium text-green-600">{project.availablePlotsCount}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">القطع المباعة:</span>
+                    <span className="font-medium text-red-600">
+                      {project.plotsCount - project.availablePlotsCount}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="flex gap-2 pt-2">
-                  <Button asChild variant="outline" size="sm" className="flex-1">
-                    <Link href={`/admin/projects/${project.id}`}>
-                      <Eye className="h-4 w-4 ml-1" />
-                      عرض
-                    </Link>
-                  </Button>
-                  <Button asChild variant="outline" size="sm" className="flex-1">
-                    <Link href={`/admin/projects/${project.id}`}>
-                      <Edit className="h-4 w-4 ml-1" />
-                      إدارة
-                    </Link>
-                  </Button>
+                <div className="flex gap-2">
+                  <Link
+                    href={`/admin/projects/${project.id}`}
+                    className="flex-1 bg-blue-600 text-white text-center py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    إدارة المشروع
+                  </Link>
+                  <Link
+                    href={`/projects/${project.id}`}
+                    className="flex-1 bg-gray-600 text-white text-center py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                    target="_blank"
+                  >
+                    عرض للعملاء
+                  </Link>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       )}

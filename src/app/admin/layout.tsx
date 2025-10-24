@@ -2,7 +2,7 @@ import { getServerUser } from '@/lib/firebase/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { LogOut, Home, Building2, Plus } from 'lucide-react';
+import { LogOut, Home, Building2, Plus, MapPin } from 'lucide-react';
 
 export default async function AdminLayout({
   children,
@@ -50,6 +50,13 @@ export default async function AdminLayout({
           {/* Sidebar */}
           <aside className="lg:w-64 space-y-2">
             <nav className="space-y-1">
+              <Button variant="ghost" className="w-full justify-start" asChild>
+                <Link href="/admin/projects">
+                  <MapPin className="h-4 w-4 ml-2" />
+                  المشاريع السكنية
+                </Link>
+              </Button>
+              
               <Button variant="ghost" className="w-full justify-start" asChild>
                 <Link href="/admin/properties">
                   <Building2 className="h-4 w-4 ml-2" />
