@@ -1,5 +1,4 @@
 import { adminDb } from '@/lib/firebase/admin';
-import { getDocs, query, where, orderBy, limit } from 'firebase-admin/firestore';
 
 export interface DashboardStats {
   totalProperties: number;
@@ -23,11 +22,9 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
     
-    const newPropertiesQuery = query(
-      adminDb.collection('properties'),
-      where('createdAt', '>=', startOfMonth)
-    );
-    const newPropertiesSnapshot = await getDocs(newPropertiesQuery);
+    const newPropertiesSnapshot = await adminDb.collection('properties')
+      .where('createdAt', '>=', startOfMonth)
+      .get();
     const newPropertiesThisMonth = newPropertiesSnapshot.size;
 
     // Get total projects
@@ -39,25 +36,19 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     const totalPlots = plotsSnapshot.size;
 
     // Get properties by status
-    const availableQuery = query(
-      adminDb.collection('properties'),
-      where('status', '==', 'available')
-    );
-    const availableSnapshot = await getDocs(availableQuery);
+    const availableSnapshot = await adminDb.collection('properties')
+      .where('status', '==', 'available')
+      .get();
     const availableProperties = availableSnapshot.size;
 
-    const soldQuery = query(
-      adminDb.collection('properties'),
-      where('status', '==', 'sold')
-    );
-    const soldSnapshot = await getDocs(soldQuery);
+    const soldSnapshot = await adminDb.collection('properties')
+      .where('status', '==', 'sold')
+      .get();
     const soldProperties = soldSnapshot.size;
 
-    const rentedQuery = query(
-      adminDb.collection('properties'),
-      where('status', '==', 'rented')
-    );
-    const rentedSnapshot = await getDocs(rentedQuery);
+    const rentedSnapshot = await adminDb.collection('properties')
+      .where('status', '==', 'rented')
+      .get();
     const rentedProperties = rentedSnapshot.size;
 
     return {
@@ -88,13 +79,11 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
 export async function getRecentProperties(limitCount: number = 5) {
   try {
-    const recentQuery = query(
-      adminDb.collection('properties'),
-      orderBy('createdAt', 'desc'),
-      limit(limitCount)
-    );
+    const snapshot = await adminDb.collection('properties')
+      .orderBy('createdAt', 'desc')
+      .limit(limitCount)
+      .get();
     
-    const snapshot = await getDocs(recentQuery);
     return snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
@@ -109,13 +98,11 @@ export async function getRecentProperties(limitCount: number = 5) {
 
 export async function getRecentProjects(limitCount: number = 5) {
   try {
-    const recentQuery = query(
-      adminDb.collection('projects'),
-      orderBy('createdAt', 'desc'),
-      limit(limitCount)
-    );
+    const snapshot = await adminDb.collection('projects')
+      .orderBy('createdAt', 'desc')
+      .limit(limitCount)
+      .get();
     
-    const snapshot = await getDocs(recentQuery);
     return snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
