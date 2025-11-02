@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Polygon } from '@react-google-maps/api';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { Property } from '@/types/property';
 import { Plot } from '@/types/map';
+import { Project } from '@/types/project';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import { MapPin, Home, Building, Phone, MessageCircle } from 'lucide-react';
 import GoogleMapsErrorHandler from '@/components/GoogleMapsErrorHandler';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { STATUS_LABELS } from '@/lib/google-maps-config';
 
 // إعدادات الخريطة
 const mapContainerStyle = {
@@ -50,51 +52,68 @@ const getMarkerIcon = (status: string) => {
 
 // ألوان القطع حسب حالتها
 const getPlotColors = (status: string) => {
+  // Normalize status to lowercase for comparison
+  const normalizedStatus = (status || '').toLowerCase().trim();
+  
   const colors = {
     available: {
-      fillColor: '#22c55e', // أخضر
+      fillColor: '#22c55e', // أخضر - متاح
       strokeColor: '#16a34a',
-      fillOpacity: 0.3,
-      strokeWeight: 2,
+      fillOpacity: 0.4,
+      strokeWeight: 3,
+      strokeOpacity: 0.9,
     },
     sold: {
-      fillColor: '#ef4444', // أحمر
-      strokeColor: '#dc2626',
-      fillOpacity: 0.3,
-      strokeWeight: 2,
+      fillColor: '#dc2626', // أحمر داكن - مباع (أكثر وضوحاً)
+      strokeColor: '#991b1b',
+      fillOpacity: 0.6,
+      strokeWeight: 3,
+      strokeOpacity: 1.0,
     },
     reserved: {
-      fillColor: '#eab308', // أصفر
-      strokeColor: '#ca8a04',
-      fillOpacity: 0.3,
-      strokeWeight: 2,
+      fillColor: '#fbbf24', // أصفر ذهبي - محجوز (أكثر وضوحاً)
+      strokeColor: '#f59e0b',
+      fillOpacity: 0.6,
+      strokeWeight: 3,
+      strokeOpacity: 1.0,
     },
   };
   
-  return colors[status as keyof typeof colors] || colors.available;
+  // Match status (case-insensitive)
+  if (normalizedStatus === 'sold' || normalizedStatus === 'مباع' || normalizedStatus === 'مباعة') {
+    return colors.sold;
+  } else if (normalizedStatus === 'reserved' || normalizedStatus === 'محجوز' || normalizedStatus === 'محجوزة' || normalizedStatus === 'hold') {
+    return colors.reserved;
+  } else {
+    // Default to available
+    return colors.available;
+  }
 };
 
 interface MapMarker {
   id: string;
   position: { lat: number; lng: number };
-  type: 'property' | 'plot';
-  data: Property | Plot;
+  type: 'property' | 'plot' | 'project';
+  data: Property | Plot | Project;
   title: string;
 }
 
 export default function PropertiesMapPage() {
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'interactive-map-loader',
+    id: 'google-maps-loader',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
     libraries: ['drawing', 'geometry', 'places'],
   });
 
   const [markers, setMarkers] = useState<MapMarker[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [plots, setPlots] = useState<Plot[]>([]);
   const [selectedMarker, setSelectedMarker] = useState<MapMarker | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mapCenter, setMapCenter] = useState(defaultCenter);
   const [mapZoom, setMapZoom] = useState(defaultZoom);
+  const mapRef = useRef<google.maps.Map | null>(null);
 
   // جلب العقارات
   const fetchProperties = useCallback(async () => {
@@ -124,30 +143,71 @@ export default function PropertiesMapPage() {
     }
   }, []);
 
-  // جلب القطع من مجموعة plots المنفصلة
-  const fetchPlots = useCallback(async () => {
+  // جلب المشاريع
+  const fetchProjects = useCallback(async () => {
     try {
-      const q = query(collection(db, 'plots'));
+      const q = query(collection(db, 'projects'));
       const querySnapshot = await getDocs(q);
-      const plots: Plot[] = [];
+      const projects: Project[] = [];
       
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        if (data.polygon && data.polygon.length > 0) {
-          // حساب مركز القطعة من الـ polygon
-          const centerLat = data.polygon.reduce((sum: number, point: any) => sum + point.lat, 0) / data.polygon.length;
-          const centerLng = data.polygon.reduce((sum: number, point: any) => sum + point.lng, 0) / data.polygon.length;
-          
-          plots.push({
+        // التحقق من وجود boundaryPath و center
+        if (data.boundaryPath && Array.isArray(data.boundaryPath) && data.boundaryPath.length > 0 && data.center) {
+          projects.push({
             id: doc.id,
-            projectId: data.projectId,
+            name: data.name,
+            description: data.description,
+            boundaryPath: data.boundaryPath,
+            center: data.center,
+            createdAt: data.createdAt,
+            updatedAt: data.updatedAt,
+          });
+        }
+      });
+      
+      console.log('Fetched projects:', projects.length, projects);
+      return projects;
+    } catch (err) {
+      console.error('Error fetching projects:', err);
+      return [];
+    }
+  }, []);
+
+  // جلب القطع من subcollection المشاريع
+  const fetchPlots = useCallback(async () => {
+    try {
+      // جلب جميع المشاريع أولاً
+      const projectsSnapshot = await getDocs(collection(db, 'projects'));
+      const plots: Plot[] = [];
+      
+      // جلب القطع من كل مشروع
+      for (const projectDoc of projectsSnapshot.docs) {
+        const projectId = projectDoc.id;
+        const plotsSnapshot = await getDocs(
+          collection(db, 'projects', projectId, 'plots')
+        );
+        
+        plotsSnapshot.forEach((plotDoc) => {
+          const data = plotDoc.data();
+          if (data.polygonPath && data.polygonPath.length > 0) {
+            // حساب مركز القطعة من الـ polygonPath
+            const centerLat = data.polygonPath.reduce((sum: number, point: any) => sum + point.lat, 0) / data.polygonPath.length;
+            const centerLng = data.polygonPath.reduce((sum: number, point: any) => sum + point.lng, 0) / data.polygonPath.length;
+            
+            plots.push({
+              id: plotDoc.id,
+              projectId: projectId,
             number: data.number,
-            status: data.status,
-            price: data.price,
-            currency: data.currency,
-            polygon: data.polygon,
+              status: data.status || 'available',
+              price: data.price || 0,
+              currency: (data.currency || 'SAR') as 'SAR' | 'USD',
+              polygon: data.polygonPath,
             center: { lat: centerLat, lng: centerLng },
-            dimensions: data.dimensions,
+              dimensions: {
+                area: data.area || 0,
+                perimeter: 0,
+              },
             notes: data.notes,
             propertyId: data.propertyId,
             createdAt: data.createdAt?.toDate() || new Date(),
@@ -155,6 +215,7 @@ export default function PropertiesMapPage() {
           });
         }
       });
+      }
       
       return plots;
     } catch (err) {
@@ -170,9 +231,10 @@ export default function PropertiesMapPage() {
         setLoading(true);
         setError(null);
         
-        const [properties, plots] = await Promise.all([
+        const [properties, plots, projects] = await Promise.all([
           fetchProperties(),
           fetchPlots(),
+          fetchProjects(),
         ]);
         
         const mapMarkers: MapMarker[] = [];
@@ -190,6 +252,8 @@ export default function PropertiesMapPage() {
           }
         });
         
+        // لا نضيف المشاريع كـ markers، فقط سنرسم حدودها كـ polygons
+        
         // إضافة القطع
         plots.forEach((plot) => {
           if (plot.center?.lat && plot.center?.lng) {
@@ -204,15 +268,62 @@ export default function PropertiesMapPage() {
         });
         
         setMarkers(mapMarkers);
+        setProjects(projects);
+        setPlots(plots);
         
-        // تحديث مركز الخريطة إذا كانت هناك بيانات
-        if (mapMarkers.length > 0) {
+        // Debug: التحقق من حالة القطع
+        console.log('Map data loaded:', {
+          properties: properties.length,
+          projects: projects.length,
+          plots: plots.length,
+          markers: mapMarkers.length
+        });
+        
+        // Debug: طباعة حالة كل قطعة
+        plots.forEach(plot => {
+          console.log(`Plot ${plot.number}: status = "${plot.status}"`);
+        });
+        
+        // تحديث مركز الخريطة وzoom لتظهر جميع البيانات
+        // حساب bounds حتى لو لم تكن هناك markers (لإظهار المشاريع)
           const bounds = new google.maps.LatLngBounds();
+        let hasData = false;
+        
+        // إضافة جميع النقاط من markers
           mapMarkers.forEach(marker => {
             bounds.extend(marker.position);
-          });
+          hasData = true;
+        });
+        
+        // إضافة حدود المشاريع
+        projects.forEach(project => {
+          if (project.boundaryPath && project.boundaryPath.length > 0) {
+            project.boundaryPath.forEach(point => {
+              bounds.extend(point);
+              hasData = true;
+            });
+          }
+        });
+        
+        // إضافة حدود القطع
+        plots.forEach(plot => {
+          if (plot.polygon && plot.polygon.length > 0) {
+            plot.polygon.forEach(point => {
+              bounds.extend(point);
+              hasData = true;
+            });
+          }
+        });
+        
+        // حساب المركز الجديد من bounds إذا كان هناك بيانات
+        if (hasData && !bounds.isEmpty()) {
+          const center = bounds.getCenter();
+          setMapCenter({ lat: center.lat(), lng: center.lng() });
           
-          // يمكن إضافة fitBounds هنا إذا أردت
+          // تطبيق fitBounds على الخريطة إذا كانت جاهزة
+          if (mapRef.current) {
+            mapRef.current.fitBounds(bounds);
+          }
         }
         
       } catch (err) {
@@ -226,7 +337,7 @@ export default function PropertiesMapPage() {
     if (isLoaded) {
       loadData();
     }
-  }, [isLoaded, fetchProperties, fetchPlots]);
+  }, [isLoaded, fetchProperties, fetchPlots, fetchProjects]);
 
   // معالجة النقر على الماركر
   const handleMarkerClick = useCallback((marker: MapMarker) => {
@@ -235,9 +346,20 @@ export default function PropertiesMapPage() {
 
   // معالجة النقر على القطعة
   const handlePlotClick = useCallback((plot: Plot) => {
+    // حساب المركز من polygon إذا لم يكن موجوداً
+    let center = plot.center;
+    if (!center && plot.polygon && plot.polygon.length > 0) {
+      const latSum = plot.polygon.reduce((sum, point) => sum + point.lat, 0);
+      const lngSum = plot.polygon.reduce((sum, point) => sum + point.lng, 0);
+      center = {
+        lat: latSum / plot.polygon.length,
+        lng: lngSum / plot.polygon.length,
+      };
+    }
+    
     const marker: MapMarker = {
       id: plot.id,
-      position: plot.center || { lat: 0, lng: 0 },
+      position: center || { lat: 0, lng: 0 },
       type: 'plot',
       data: plot,
       title: `القطعة ${plot.number}`,
@@ -300,33 +422,69 @@ export default function PropertiesMapPage() {
     </div>
   );
 
+  // عرض تفاصيل المشروع
+  const renderProjectInfo = (project: Project) => (
+    <div className="p-4 max-w-sm">
+      <div className="space-y-3">
+        <div className="flex items-start justify-between">
+          <h3 className="font-bold text-lg text-right">{project.name}</h3>
+          <Badge variant="outline">
+            مشروع
+          </Badge>
+        </div>
+        
+        <div className="text-sm text-muted-foreground space-y-1">
+          {project.description && (
+            <p>{project.description}</p>
+          )}
+        </div>
+        
+        <div className="flex gap-2">
+          <Button size="sm" asChild className="flex-1">
+            <a href={`/projects/${project.id}`}>عرض المشروع</a>
+          </Button>
+          <Button size="sm" variant="outline" asChild>
+            <a href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP}?text=أريد الاستفسار عن المشروع: ${project.name}`} target="_blank" rel="noopener noreferrer">
+              <MessageCircle className="h-4 w-4" />
+            </a>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
   // عرض تفاصيل القطعة
   const renderPlotInfo = (plot: Plot) => (
     <div className="p-4 max-w-sm">
       <div className="space-y-3">
         <div className="flex items-start justify-between">
-          <h3 className="font-bold text-lg text-right">القطعة {plot.number}</h3>
+          <h3 className="font-bold text-lg text-right">قطعة رقم: {plot.number}</h3>
           <Badge variant={plot.status === 'available' ? "default" : "secondary"}>
-            {plot.status}
+            {STATUS_LABELS[plot.status as keyof typeof STATUS_LABELS] || plot.status}
           </Badge>
         </div>
         
         <div className="text-sm text-muted-foreground space-y-1">
           {plot.dimensions?.area && (
-            <div className="flex items-center gap-2">
-              <Building className="h-4 w-4" />
-              <span>{plot.dimensions.area} م²</span>
-            </div>
+            <p>
+              <strong>المساحة:</strong> {Math.round(plot.dimensions.area)} م²
+            </p>
           )}
           
           {plot.price && (
-            <div className="text-lg font-bold text-primary">
-              {plot.price.toLocaleString()} {plot.currency}
-            </div>
+            <p>
+              <strong>السعر:</strong> {plot.price.toLocaleString()} ر.س
+            </p>
           )}
           
+          <p>
+            <strong>الحالة:</strong> {STATUS_LABELS[plot.status as keyof typeof STATUS_LABELS] || plot.status}
+          </p>
+          
           {plot.notes && (
-            <p className="text-sm">{plot.notes}</p>
+            <p className="text-sm">
+              <strong>ملاحظات:</strong> {plot.notes}
+            </p>
           )}
         </div>
         
@@ -388,6 +546,10 @@ export default function PropertiesMapPage() {
               </div>
               <div className="flex flex-wrap justify-center gap-4 text-sm">
                 <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-indigo-500 rounded-full"></div>
+                  <span>المشاريع</span>
+                </div>
+                <div className="flex items-center gap-2">
                   <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
                   <span>العقارات</span>
                 </div>
@@ -426,6 +588,41 @@ export default function PropertiesMapPage() {
                     mapContainerStyle={{ width: '100%', height: '100%' }}
                     center={mapCenter}
                     zoom={mapZoom}
+                    onLoad={(map) => {
+                      mapRef.current = map;
+                      // تطبيق fitBounds إذا كانت هناك markers
+                      if (markers.length > 0 || projects.length > 0 || plots.length > 0) {
+                        const bounds = new google.maps.LatLngBounds();
+                        
+                        // إضافة جميع النقاط من markers
+                        markers.forEach(marker => {
+                          bounds.extend(marker.position);
+                        });
+                        
+                        // إضافة حدود المشاريع
+                        projects.forEach(project => {
+                          if (project.boundaryPath && project.boundaryPath.length > 0) {
+                            project.boundaryPath.forEach(point => {
+                              bounds.extend(point);
+                            });
+                          }
+                        });
+                        
+                        // إضافة حدود القطع
+                        plots.forEach(plot => {
+                          if (plot.polygon && plot.polygon.length > 0) {
+                            plot.polygon.forEach(point => {
+                              bounds.extend(point);
+                            });
+                          }
+                        });
+                        
+                        // تطبيق fitBounds
+                        if (!bounds.isEmpty()) {
+                          map.fitBounds(bounds);
+                        }
+                      }
+                    }}
                     options={{
                       disableDefaultUI: false,
                       zoomControl: true,
@@ -434,21 +631,57 @@ export default function PropertiesMapPage() {
                       fullscreenControl: true,
                     }}
                   >
+                    {/* عرض حدود المشاريع كـ polygons - في الخلفية */}
+                    {projects.map((project) => {
+                      if (!project.boundaryPath || project.boundaryPath.length === 0) return null;
+                      
+                      return (
+                        <Polygon
+                          key={project.id}
+                          paths={project.boundaryPath}
+                          options={{
+                            fillColor: '#1a1a1a',
+                            fillOpacity: 0.1,
+                            strokeColor: '#000000',
+                            strokeWeight: 4,
+                            strokeOpacity: 0.8,
+                            clickable: true,
+                            zIndex: 0, // في الخلفية
+                          }}
+                          onClick={() => {
+                            // عرض معلومات المشروع عند النقر على حدوده (ليس على قطعة أرض)
+                            const marker: MapMarker = {
+                              id: project.id,
+                              position: project.center,
+                              type: 'project',
+                              data: project,
+                              title: project.name,
+                            };
+                            handleMarkerClick(marker);
+                          }}
+                        />
+                      );
+                    })}
+                    
                     {/* عرض العقارات كـ markers */}
                     {markers.filter(marker => marker.type === 'property').map((marker) => (
                       <Marker
                         key={marker.id}
                         position={marker.position}
                         title={marker.title}
-                        icon={getMarkerIcon(marker.data.status)}
+                        icon={getMarkerIcon((marker.data as Property).status)}
                         onClick={() => handleMarkerClick(marker)}
                       />
                     ))}
                     
-                    {/* عرض القطع كـ polygons */}
+                    {/* عرض القطع كـ polygons - في المقدمة */}
                     {markers.filter(marker => marker.type === 'plot').map((marker) => {
                       const plot = marker.data as Plot;
                       const colors = getPlotColors(plot.status);
+                      
+                      // Debug: طباعة حالة القطعة واللون المستخدم
+                      console.log(`Rendering plot ${plot.number}: status="${plot.status}", color=${colors.fillColor}`);
+                      
                       return (
                         <Polygon
                           key={marker.id}
@@ -456,8 +689,12 @@ export default function PropertiesMapPage() {
                           options={{
                             ...colors,
                             clickable: true,
+                            zIndex: 2, // في المقدمة فوق المشاريع
                           }}
-                          onClick={() => handlePlotClick(plot)}
+                          onClick={() => {
+                            // عند النقر على القطعة، يتم عرض معلوماتها (zIndex أعلى يضمن أن القطعة تستقبل النقر أولاً)
+                            handlePlotClick(plot);
+                          }}
                         />
                       );
                     })}
@@ -469,6 +706,8 @@ export default function PropertiesMapPage() {
                       >
                         {selectedMarker.type === 'property' 
                           ? renderPropertyInfo(selectedMarker.data as Property)
+                          : selectedMarker.type === 'project'
+                          ? renderProjectInfo(selectedMarker.data as Project)
                           : renderPlotInfo(selectedMarker.data as Plot)
                         }
                       </InfoWindow>
@@ -481,20 +720,24 @@ export default function PropertiesMapPage() {
                       <div className="font-semibold text-center text-xs md:text-sm">إحصائيات الخريطة</div>
                       <div className="space-y-1">
                         <div className="flex items-center gap-1 md:gap-2">
+                          <div className="w-2 h-2 md:w-3 md:h-3 bg-indigo-500 rounded-full flex-shrink-0"></div>
+                          <span className="text-xs md:text-sm">المشاريع: {markers.filter(m => m.type === 'project').length}</span>
+                        </div>
+                        <div className="flex items-center gap-1 md:gap-2">
                           <div className="w-2 h-2 md:w-3 md:h-3 bg-blue-500 rounded-full flex-shrink-0"></div>
                           <span className="text-xs md:text-sm">العقارات: {markers.filter(m => m.type === 'property').length}</span>
                         </div>
                         <div className="flex items-center gap-1 md:gap-2">
                           <div className="w-2 h-2 md:w-3 md:h-3 bg-green-500 rounded-full flex-shrink-0"></div>
-                          <span className="text-xs md:text-sm">القطع المتاحة: {markers.filter(m => m.type === 'plot' && m.data.status === 'available').length}</span>
+                          <span className="text-xs md:text-sm">القطع المتاحة: {markers.filter(m => m.type === 'plot' && (m.data as Plot).status === 'available').length}</span>
                         </div>
                         <div className="flex items-center gap-1 md:gap-2">
                           <div className="w-2 h-2 md:w-3 md:h-3 bg-red-500 rounded-full flex-shrink-0"></div>
-                          <span className="text-xs md:text-sm">القطع المباعة: {markers.filter(m => m.type === 'plot' && m.data.status === 'sold').length}</span>
+                          <span className="text-xs md:text-sm">القطع المباعة: {markers.filter(m => m.type === 'plot' && (m.data as Plot).status === 'sold').length}</span>
                         </div>
                         <div className="flex items-center gap-1 md:gap-2">
                           <div className="w-2 h-2 md:w-3 md:h-3 bg-yellow-500 rounded-full flex-shrink-0"></div>
-                          <span className="text-xs md:text-sm">القطع المحجوزة: {markers.filter(m => m.type === 'plot' && m.data.status === 'reserved').length}</span>
+                          <span className="text-xs md:text-sm">القطع المحجوزة: {markers.filter(m => m.type === 'plot' && (m.data as Plot).status === 'reserved').length}</span>
                         </div>
                       </div>
                     </div>

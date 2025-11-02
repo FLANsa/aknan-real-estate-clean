@@ -60,23 +60,23 @@ export default function PropertiesListClient({
         console.log('PropertiesListClient: Base query created');
 
         // Apply filters without orderBy to avoid index requirements
-        if ((filters as any).city) {
+        if ((filters as any).city && (filters as any).city !== 'all') {
           console.log('PropertiesListClient: Adding city filter:', (filters as any).city);
           qRef = query(qRef, where('city', '==', (filters as any).city));
         }
-        if ((filters as any).district) {
+        if ((filters as any).district && (filters as any).district !== 'all') {
           console.log('PropertiesListClient: Adding district filter:', (filters as any).district);
           qRef = query(qRef, where('district', '==', (filters as any).district));
         }
-        if ((filters as any).type) {
+        if ((filters as any).type && (filters as any).type !== 'all') {
           console.log('PropertiesListClient: Adding type filter:', (filters as any).type);
           qRef = query(qRef, where('type', '==', (filters as any).type));
         }
-        if ((filters as any).purpose) {
+        if ((filters as any).purpose && (filters as any).purpose !== 'all') {
           console.log('PropertiesListClient: Adding purpose filter:', (filters as any).purpose);
           qRef = query(qRef, where('purpose', '==', (filters as any).purpose));
         }
-        if ((filters as any).status) {
+        if ((filters as any).status && (filters as any).status !== 'all') {
           console.log('PropertiesListClient: Adding status filter:', (filters as any).status);
           qRef = query(qRef, where('status', '==', (filters as any).status));
         }
@@ -121,9 +121,9 @@ export default function PropertiesListClient({
           items = items.filter((p) => p.areaM2 && p.areaM2 >= Number((filters as any).minArea));
         if ((filters as any).maxArea)
           items = items.filter((p) => p.areaM2 && p.areaM2 <= Number((filters as any).maxArea));
-        if ((filters as any).bedrooms)
+        if ((filters as any).bedrooms && (filters as any).bedrooms !== 'all')
           items = items.filter((p) => p.bedrooms && p.bedrooms >= Number((filters as any).bedrooms));
-        if ((filters as any).bathrooms)
+        if ((filters as any).bathrooms && (filters as any).bathrooms !== 'all')
           items = items.filter((p) => p.bathrooms && p.bathrooms >= Number((filters as any).bathrooms));
 
         console.log('PropertiesListClient: After filters:', items.length, 'properties remain');

@@ -100,13 +100,8 @@ export async function updateProperty(
       };
     }
     
+    // Admin users can edit any property, no need to check createdBy
     const existingProperty = propertyDoc.data();
-    if (existingProperty?.createdBy !== user.uid) {
-      return {
-        success: false,
-        error: 'ليس لديك صلاحية لتعديل هذا العقار',
-      };
-    }
     
     // Generate new slug if title changed
     let slug = existingProperty?.slug;
@@ -171,13 +166,8 @@ export async function deleteProperty(id: string): Promise<ActionResult> {
       };
     }
     
+    // Admin users can delete any property, no need to check createdBy
     const property = propertyDoc.data();
-    if (property?.createdBy !== user.uid) {
-      return {
-        success: false,
-        error: 'ليس لديك صلاحية لحذف هذا العقار',
-      };
-    }
     
     // Delete associated images from storage
     if (property?.images?.length > 0) {

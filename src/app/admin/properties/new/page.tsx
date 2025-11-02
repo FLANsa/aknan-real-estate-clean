@@ -16,12 +16,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Save } from 'lucide-react';
 import ImageUploader from '@/components/ImageUploader';
+import LocationPicker from '@/components/LocationPicker';
 import { PROPERTY_PURPOSE_LABELS, PROPERTY_TYPE_LABELS, PROPERTY_STATUS_LABELS } from '@/types/property';
+import { MAP_CONFIG } from '@/lib/google-maps-config';
 
 export default function NewPropertyPage() {
   const [images, setImages] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [location, setLocation] = useState({ lat: MAP_CONFIG.defaultCenter.lat, lng: MAP_CONFIG.defaultCenter.lng });
+  const [zoom, setZoom] = useState(MAP_CONFIG.defaultZoom);
   const router = useRouter();
 
   const {
@@ -54,6 +58,8 @@ export default function NewPropertyPage() {
         ...data,
         currency: 'SAR' as const, // إضافة العملة تلقائياً
         images,
+        lat: location.lat,
+        lng: location.lng,
       };
 
       const result = await createProperty(formData);
@@ -325,6 +331,31 @@ export default function NewPropertyPage() {
               />
               <Label htmlFor="featured">عقار مميز</Label>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Location */}
+        <Card>
+          <CardHeader>
+            <CardTitle>موقع العقار</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <LocationPicker
+              center={location}
+              zoom={zoom}
+              onLocationChange={(newLocation, newZoom) => {
+                setLocation(newLocation);
+                setZoom(newZoom);
+                setValue('lat', newLocation.lat);
+                setValue('lng', newLocation.lng);
+              }}
+              disabled={isSubmitting}
+            />
+            {(errors.lat || errors.lng) && (
+              <p className="text-sm text-destructive mt-2">
+                {errors.lat?.message || errors.lng?.message}
+              </p>
+            )}
           </CardContent>
         </Card>
 

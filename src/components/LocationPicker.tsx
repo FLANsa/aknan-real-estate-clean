@@ -30,9 +30,9 @@ const SAUDI_CITIES_WITH_ZOOM = SAUDI_CITIES.map(city => ({
 
 export default function LocationPicker({ center, zoom, onLocationChange, disabled = false }: LocationPickerProps) {
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'location-picker-loader-unique',
+    id: 'google-maps-loader',
     googleMapsApiKey: GOOGLE_MAPS_API_KEY,
-    libraries: ['places'],
+    libraries: ['drawing', 'geometry', 'places'],
   });
 
   const [mapCenter, setMapCenter] = useState(center);

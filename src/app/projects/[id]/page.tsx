@@ -1,126 +1,330 @@
-import { getPublicProject, getPublicProjectPlots } from './actions';
-import { notFound } from 'next/navigation';
-import { Metadata } from 'next';
+'use client';
+import { useEffect, useRef, useState, use } from 'react';
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
+import type { Plot, Project } from '@/types/project';
+import GMap from '@/components/GMap';
+import { STATUS_COLORS, STATUS_LABELS } from '@/lib/google-maps-config';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { MapPin, Calendar, Square, DollarSign, Eye } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { MapPin, BarChart3, Calendar, Phone, MessageCircle } from 'lucide-react';
-import { PLOT_STATUS_LABELS, PLOT_STATUS_COLORS } from '@/types/map';
-import InteractiveMap from '@/components/InteractiveMap';
-import { formatArea, formatPerimeter } from '@/lib/google-maps';
 
-interface PublicProjectPageProps {
-  params: Promise<{ id: string }>;
-}
-
-// generateStaticParams not needed for standalone mode
-
-export async function generateMetadata({ params }: PublicProjectPageProps): Promise<Metadata> {
-  const resolvedParams = await params;
-  const result = await getPublicProject(resolvedParams.id);
+export default function ProjectPublicPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const [project, setProject] = useState<(Project & { id: string }) | null>(null);
+  const [plots, setPlots] = useState<(Plot & { id: string })[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isMapReady, setIsMapReady] = useState(false);
   
-  if (!result.success || !result.data) {
-    return {
-      title: 'المشروع غير موجود',
+  // Map refs for cleanup
+  const boundaryPoly = useRef<google.maps.Polygon | null>(null);
+  const plotPolys = useRef<google.maps.Polygon[]>([]);
+
+  useEffect(() => {
+    loadData();
+    setIsMapReady(false); // إعادة تعيين حالة الخريطة عند تغيير المشروع
+    
+    // Cleanup function
+    return () => {
+      // Clean up polygons to prevent memory leaks
+      if (boundaryPoly.current) {
+        boundaryPoly.current.setMap(null);
+      }
+      plotPolys.current.forEach(poly => {
+        poly.setMap(null);
+      });
+      plotPolys.current = [];
     };
-  }
+  }, [id]);
 
-  const project = result.data;
-  
-  return {
-    title: project.name,
-    description: project.description || `مشروع ${project.name} - عرض القطع المتاحة`,
-  };
-}
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-export default async function PublicProjectPage({ params }: PublicProjectPageProps) {
-  const resolvedParams = await params;
-  
-  const projectResult = await getPublicProject(resolvedParams.id);
-  const plotsResult = await getPublicProjectPlots(resolvedParams.id);
+      const [projectSnap, plotsSnap] = await Promise.all([
+        getDoc(doc(db, 'projects', id)),
+        getDocs(collection(db, 'projects', id, 'plots'))
+      ]);
 
-  if (!projectResult.success || !projectResult.data) {
-    notFound();
-  }
+      if (!projectSnap.exists()) {
+        setError('المشروع غير موجود');
+        return;
+      }
 
-  const project = projectResult.data;
-  const allPlots = plotsResult.success ? plotsResult.data || [] : [];
-  
-  // Filter to show only available plots to public
-  const availablePlots = allPlots.filter(plot => plot.status === 'available');
+      const projectData = { id: projectSnap.id, ...projectSnap.data() } as Project & { id: string };
+      setProject(projectData);
 
-  // Calculate statistics
-  const stats = {
-    total: allPlots.length,
-    available: availablePlots.length,
-    sold: allPlots.filter(p => p.status === 'sold').length,
-    reserved: allPlots.filter(p => p.status === 'reserved').length,
+      const plotsData = plotsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Plot & { id: string }));
+      setPlots(plotsData);
+
+    } catch (err) {
+      console.error('Error loading data:', err);
+      setError('حدث خطأ أثناء تحميل البيانات');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP;
-  const phoneNumber = process.env.NEXT_PUBLIC_PHONE;
+  // مرجع للخريطة
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
+
+  // رسم الخريطة عند تحميل المشروع والقطع
+  useEffect(() => {
+    if (!mapRef.current || !project || !isMapReady) {
+      console.log('Map render waiting:', { mapReady: !!mapRef.current, project: !!project, isMapReady });
+      return;
+    }
+
+    const map = mapRef.current;
+
+    // Clean up previous polygons
+    if (boundaryPoly.current) {
+      boundaryPoly.current.setMap(null);
+    }
+    plotPolys.current.forEach(poly => {
+      poly.setMap(null);
+    });
+    plotPolys.current = [];
+
+    // Close any open InfoWindow
+    if (infoWindowRef.current) {
+      infoWindowRef.current.close();
+    }
+
+    // حدود المشروع (أسود)
+    if (project.boundaryPath && Array.isArray(project.boundaryPath) && project.boundaryPath.length > 0) {
+      console.log('Drawing project boundary with', project.boundaryPath.length, 'points');
+      boundaryPoly.current = new google.maps.Polygon({
+        paths: project.boundaryPath,
+        strokeColor: '#000',
+        strokeWeight: 3,
+        fillColor: '#000',
+        fillOpacity: 0.1,
+        clickable: true,
+      });
+      boundaryPoly.current.setMap(map);
+
+      // إضافة InfoWindow عند النقر على حدود المشروع
+      boundaryPoly.current.addListener('click', (e: google.maps.MapMouseEvent) => {
+        const html = `
+          <div dir="rtl" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 300px;">
+            <h3 style="margin: 0 0 8px 0; color: #1f2937; font-size: 16px; font-weight: bold;">${project.name}</h3>
+            ${project.description ? `<p style="margin: 4px 0; font-size: 14px; color: #4b5563;">${project.description}</p>` : ''}
+            <p style="margin: 8px 0 0 0; font-size: 12px; color: #6b7280;">
+              عدد القطع: ${plots.length}
+            </p>
+          </div>
+        `;
+        
+        if (infoWindowRef.current) {
+          infoWindowRef.current.close();
+        }
+        
+        infoWindowRef.current = new google.maps.InfoWindow({ 
+          content: html,
+          maxWidth: 320
+        });
+        
+        if (e.latLng) {
+          infoWindowRef.current.setPosition(e.latLng);
+          infoWindowRef.current.open(map);
+        }
+      });
+    }
+
+    if (project.center) {
+      map.setCenter(project.center);
+      // استخدام zoom الافتراضي أو 15
+      const defaultZoom = 15;
+      map.setZoom(defaultZoom);
+    }
+
+    // رسم القطع
+    console.log(`Starting to render ${plots.length} plots`);
+    plots.forEach((plot) => {
+      if (!plot.polygonPath || !Array.isArray(plot.polygonPath) || plot.polygonPath.length === 0) {
+        console.warn(`Plot ${plot.number} has invalid polygonPath:`, plot.polygonPath);
+        return;
+      }
+      
+      console.log(`Rendering plot ${plot.number} with status ${plot.status}`);
+
+      const poly = new google.maps.Polygon({
+        paths: plot.polygonPath,
+        strokeColor: STATUS_COLORS[plot.status] || STATUS_COLORS.available,
+        strokeWeight: 2,
+        fillColor: STATUS_COLORS[plot.status] || STATUS_COLORS.available,
+        fillOpacity: 0.4,
+        clickable: true,
+      });
+      poly.setMap(map);
+      plotPolys.current.push(poly);
+
+      // إضافة InfoWindow عند النقر
+      poly.addListener('click', (e: google.maps.MapMouseEvent) => {
+        // إغلاق أي InfoWindow مفتوح سابقاً
+        if (infoWindowRef.current) {
+          infoWindowRef.current.close();
+        }
+
+        const images = plot.images?.slice(0, 3).map(src => 
+          `<img src="${src}" style="width:80px;height:60px;object-fit:cover;border-radius:6px;margin:2px"/>`
+        ).join('') ?? '';
+        
+        const html = `
+          <div dir="rtl" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 300px;">
+            <h3 style="margin: 0 0 8px 0; color: #1f2937; font-size: 16px; font-weight: bold;">قطعة رقم: ${plot.number}</h3>
+            ${plot.area ? `<p style="margin: 4px 0; font-size: 14px;"><strong>المساحة:</strong> ${Math.round(plot.area)} م²</p>` : ''}
+            ${plot.price ? `<p style="margin: 4px 0; font-size: 14px;"><strong>السعر:</strong> ${plot.price.toLocaleString()} ر.س</p>` : ''}
+            <p style="margin: 4px 0; font-size: 14px;"><strong>الحالة:</strong> ${STATUS_LABELS[plot.status] || plot.status}</p>
+            ${plot.notes ? `<p style="margin: 4px 0; font-size: 14px;"><strong>ملاحظات:</strong> ${plot.notes}</p>` : ''}
+            ${images ? `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;">${images}</div>` : ''}
+          </div>
+        `;
+        
+        infoWindowRef.current = new google.maps.InfoWindow({ 
+          content: html,
+          maxWidth: 320
+        });
+        
+        if (e.latLng) {
+          infoWindowRef.current.setPosition(e.latLng);
+          infoWindowRef.current.open(map);
+        }
+      });
+
+      // تغيير cursor عند التمرير
+      poly.addListener('mouseover', () => {
+        map.getDiv().style.cursor = 'pointer';
+      });
+      
+      poly.addListener('mouseout', () => {
+        map.getDiv().style.cursor = '';
+      });
+    });
+
+    console.log(`Rendered ${plotPolys.current.length} plots on map`);
+  }, [project, plots, isMapReady]);
+
+  const onMapLoad = (map: google.maps.Map) => {
+    console.log('Map loaded, setting mapRef');
+    mapRef.current = map;
+    setIsMapReady(true);
+    
+    // إذا كانت البيانات جاهزة، رسم العناصر مباشرة
+    if (project && plots.length >= 0) {
+      console.log('Data already loaded, will render in useEffect');
+    }
+  };
+
+  // حساب الإحصائيات
+  const stats = plots.reduce((acc, plot) => {
+    acc.total++;
+    if (plot.status === 'available') acc.available++;
+    else if (plot.status === 'hold') acc.hold++;
+    else if (plot.status === 'sold') acc.sold++;
+    return acc;
+  }, { total: 0, available: 0, hold: 0, sold: 0 });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 pt-32">
+          <div className="container mx-auto px-4 py-8">
+            <div className="space-y-6">
+              <div className="h-8 bg-muted animate-pulse rounded w-64" />
+              <div className="h-96 bg-muted animate-pulse rounded-xl" />
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 pt-32">
+          <div className="container mx-auto px-4 py-8">
+            <div className="text-center py-12">
+              <h1 className="text-2xl font-semibold mb-4">المشروع غير موجود</h1>
+              <p className="text-muted-foreground">
+                يبدو أن المشروع الذي تبحث عنه غير متوفر
+              </p>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
-      <main className="flex-1 container py-8">
-        <div className="space-y-6 max-w-6xl mx-auto">
+      <main className="flex-1 pt-32">
+        <div className="container mx-auto px-4 py-8">
+        <div className="space-y-8">
           {/* Project Header */}
           <div className="text-center space-y-4">
-            <h1 className="text-3xl md:text-4xl font-bold">{project.name}</h1>
+            <h1 className="text-4xl font-bold">{project.name}</h1>
             {project.description && (
-              <p className="text-muted-foreground max-w-2xl mx-auto">
+              <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
                 {project.description}
               </p>
             )}
+            <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                تاريخ الإنشاء: {project.createdAt?.toDate?.()?.toLocaleDateString('ar-SA') ?? 'غير محدد'}
+              </div>
+            </div>
           </div>
 
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+              {error}
+            </div>
+          )}
+
           {/* Statistics */}
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">إجمالي القطع</CardTitle>
-                <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.total}</div>
-                <p className="text-xs text-muted-foreground">قطعة</p>
+              <CardContent className="p-4 text-center">
+                <div className="text-2xl font-bold text-primary">{stats.total}</div>
+                <div className="text-sm text-muted-foreground">إجمالي القطع</div>
               </CardContent>
             </Card>
-
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">متاح</CardTitle>
-                <div className="h-4 w-4 rounded-full" style={{ backgroundColor: PLOT_STATUS_COLORS.available }} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.available}</div>
-                <p className="text-xs text-muted-foreground">قطعة</p>
+              <CardContent className="p-4 text-center">
+                <div className="text-2xl font-bold" style={{ color: STATUS_COLORS.available }}>
+                  {stats.available}
+                </div>
+                <div className="text-sm text-muted-foreground">متاحة</div>
               </CardContent>
             </Card>
-
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">مباع</CardTitle>
-                <div className="h-4 w-4 rounded-full" style={{ backgroundColor: PLOT_STATUS_COLORS.sold }} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.sold}</div>
-                <p className="text-xs text-muted-foreground">قطعة</p>
+              <CardContent className="p-4 text-center">
+                <div className="text-2xl font-bold" style={{ color: STATUS_COLORS.hold }}>
+                  {stats.hold}
+                </div>
+                <div className="text-sm text-muted-foreground">محجوزة</div>
               </CardContent>
             </Card>
-
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">محجوز</CardTitle>
-                <div className="h-4 w-4 rounded-full" style={{ backgroundColor: PLOT_STATUS_COLORS.reserved }} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.reserved}</div>
-                <p className="text-xs text-muted-foreground">قطعة</p>
+              <CardContent className="p-4 text-center">
+                <div className="text-2xl font-bold" style={{ color: STATUS_COLORS.sold }}>
+                  {stats.sold}
+                </div>
+                <div className="text-sm text-muted-foreground">مباعة</div>
               </CardContent>
             </Card>
           </div>
@@ -128,172 +332,71 @@ export default async function PublicProjectPage({ params }: PublicProjectPagePro
           {/* Interactive Map */}
           <Card>
             <CardHeader>
-              <CardTitle>خريطة المشروع</CardTitle>
-              <CardDescription>
-                انقر على القطع المتاحة لعرض التفاصيل والسعر
-              </CardDescription>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                خريطة المشروع التفاعلية
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <InteractiveMap
-                project={project}
-                plots={availablePlots}
-                mode="view"
-                className="rounded-lg border"
-              />
+              <p className="text-sm text-muted-foreground mb-4">
+                انقر على أي قطعة لعرض التفاصيل. الحدود السوداء: حدود المشروع | القطع الملونة: حسب الحالة
+              </p>
+              <GMap center={project.center} onMapLoad={onMapLoad} height="600px" />
             </CardContent>
           </Card>
 
           {/* Available Plots */}
+          {stats.available > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>القطع المتاحة</CardTitle>
-              <CardDescription>
-                عرض القطع المتاحة للبيع مع التفاصيل والأسعار
-              </CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                  <Eye className="h-5 w-5" />
+                  القطع المتاحة ({stats.available})
+                </CardTitle>
             </CardHeader>
             <CardContent>
-              {availablePlots.length === 0 ? (
-                <div className="text-center py-8">
-                  <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="text-lg font-semibold mb-2">لا توجد قطع متاحة</h3>
-                  <p className="text-muted-foreground">
-                    جميع القطع في هذا المشروع تم بيعها أو حجزها
-                  </p>
-                </div>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {availablePlots.map((plot) => (
-                    <Card key={plot.id} className="hover:shadow-md transition-shadow">
-                      <CardHeader>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {plots
+                    .filter(plot => plot.status === 'available')
+                    .map((plot) => (
+                      <div key={plot.id} className="border rounded-lg p-4 space-y-2">
                         <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg">القطعة {plot.number}</CardTitle>
-                          <Badge style={{ backgroundColor: PLOT_STATUS_COLORS[plot.status] }}>
-                            {PLOT_STATUS_LABELS[plot.status]}
+                          <h3 className="font-semibold">قطعة {plot.number}</h3>
+                          <Badge 
+                            style={{ 
+                              backgroundColor: STATUS_COLORS[plot.status],
+                              color: 'white'
+                            }}
+                          >
+                            {STATUS_LABELS[plot.status]}
                           </Badge>
                         </div>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">السعر:</span>
-                            <span className="font-medium">
-                              {plot.price.toLocaleString()} {plot.currency}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">المساحة:</span>
-                            <span className="font-medium">{formatArea(plot.dimensions.area)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">المحيط:</span>
-                            <span className="font-medium">{formatPerimeter(plot.dimensions.perimeter)}</span>
-                          </div>
-                        </div>
-
-                        {plot.notes && (
-                          <div className="text-sm text-muted-foreground">
-                            <strong>ملاحظات:</strong> {plot.notes}
+                        {plot.area && (
+                          <div className="flex items-center text-sm text-muted-foreground">
+                            <Square className="h-4 w-4 ml-2" />
+                            {Math.round(plot.area)} م²
                           </div>
                         )}
-
-                        <div className="flex gap-2 pt-2">
-                          {whatsappNumber && (
-                            <Button
-                              asChild
-                              size="sm"
-                              className="flex-1"
-                              style={{ backgroundColor: '#25D366' }}
-                            >
-                              <a
-                                href={`https://wa.me/${whatsappNumber}?text=مرحباً، أريد الاستفسار عن القطعة ${plot.number} في مشروع ${project.name}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <MessageCircle className="h-4 w-4 ml-1" />
-                                واتساب
-                              </a>
-                            </Button>
-                          )}
-                          {phoneNumber && (
-                            <Button asChild variant="outline" size="sm" className="flex-1">
-                              <a href={`tel:${phoneNumber}`}>
-                                <Phone className="h-4 w-4 ml-1" />
-                                اتصال
-                              </a>
-                            </Button>
+                        {plot.price && (
+                          <div className="flex items-center text-sm text-muted-foreground">
+                            <DollarSign className="h-4 w-4 ml-2" />
+                            {plot.price.toLocaleString()} ر.س
+                          </div>
+                        )}
+                        {plot.notes && (
+                          <p className="text-sm text-muted-foreground">
+                            {plot.notes.substring(0, 80)}{plot.notes.length > 80 ? '...' : ''}
+                          </p>
                           )}
                         </div>
-                      </CardContent>
-                    </Card>
                   ))}
                 </div>
-              )}
             </CardContent>
           </Card>
-
-          {/* Contact Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>تواصل معنا</CardTitle>
-              <CardDescription>
-                للاستفسار عن القطع المتاحة أو طلب معلومات إضافية
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <MapPin className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">موقع المشروع</p>
-                      <p className="text-sm text-muted-foreground">
-                        {project.location.lat.toFixed(6)}, {project.location.lng.toFixed(6)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">تاريخ الإنشاء</p>
-                      <p className="text-sm text-muted-foreground">
-                        {project.createdAt.toLocaleDateString('ar-SA')}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  {whatsappNumber && (
-                    <Button
-                      asChild
-                      className="w-full"
-                      style={{ backgroundColor: '#25D366' }}
-                    >
-                      <a
-                        href={`https://wa.me/${whatsappNumber}?text=مرحباً، أريد الاستفسار عن مشروع ${project.name}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <MessageCircle className="h-4 w-4 ml-2" />
-                        تواصل عبر واتساب
-                      </a>
-                    </Button>
-                  )}
-                  {phoneNumber && (
-                    <Button asChild variant="outline" className="w-full">
-                      <a href={`tel:${phoneNumber}`}>
-                        <Phone className="h-4 w-4 ml-2" />
-                        اتصل بنا
-                      </a>
-                    </Button>
                   )}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </main>
-      
       <Footer />
     </div>
   );

@@ -1,360 +1,550 @@
 'use client';
-
-import { useState, useEffect, useCallback } from 'react';
-
-export const dynamic = 'force-dynamic';
-import { useRouter } from 'next/navigation';
-import { getProject } from '../actions';
-import { getProjectPlots, getAvailableProperties, createPlot, updatePlot, deletePlot } from './actions';
+import { useEffect, useRef, useState, use } from 'react';
+import { doc, getDoc, collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
+import { ensureClosed, polygonAreaSqm, toLatLngArray, isValidPolygon, checkPolygonOverlap, isPolygonInsideBoundary } from '@/lib/geo-utils';
+import { STATUS_COLORS, STATUS_LABELS, MAP_CONSTRAINTS } from '@/lib/google-maps-config';
+import type { Plot, Project, LatLng, PlotStatus } from '@/types/project';
+import GMap from '@/components/GMap';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { MapPin, Plus, Eye, BarChart3, Calendar, Edit, Trash2 } from 'lucide-react';
-import { PLOT_STATUS_LABELS, PLOT_STATUS_COLORS } from '@/types/map';
-import InteractiveMap from '@/components/InteractiveMap';
-import PlotForm from '@/components/PlotForm';
-import { formatArea, formatPerimeter } from '@/lib/google-maps';
-import { Plot, Coordinates, Project } from '@/types/map';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Edit, Save, X } from 'lucide-react';
 
-interface ProjectManagementPageProps {
-  params: Promise<{ id: string }>;
-}
-
-export default function ProjectManagementPage({ params }: ProjectManagementPageProps) {
-  const router = useRouter();
-  const [project, setProject] = useState<Project | null>(null);
-  const [plots, setPlots] = useState<Plot[]>([]);
-  const [availableProperties, setAvailableProperties] = useState<Array<{ id: string; titleAr: string }>>([]);
+export default function ProjectAdminPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const [project, setProject] = useState<(Project & { id: string }) | null>(null);
+  const [plots, setPlots] = useState<(Plot & { id: string })[]>([]);
+  const [draftPath, setDraftPath] = useState<LatLng[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [selectedPlot, setSelectedPlot] = useState<Plot | null>(null);
-  const [showPlotForm, setShowPlotForm] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  const projectId = params.then(p => p.id);
+  // Form states for new plot
+  const [plotNumber, setPlotNumber] = useState('');
+  const [plotPrice, setPlotPrice] = useState<number | ''>('');
+  const [plotStatus, setPlotStatus] = useState<PlotStatus>('available');
+  const [plotNotes, setPlotNotes] = useState('');
+  const [manualArea, setManualArea] = useState<number | ''>('');
+
+  // Map refs
+  const boundaryPoly = useRef<google.maps.Polygon | null>(null);
+  const plotPolys = useRef<Record<string, google.maps.Polygon>>({});
+  const drawingManagerRef = useRef<google.maps.drawing.DrawingManager | null>(null);
+  const [isDrawingMode, setIsDrawingMode] = useState(false);
 
   useEffect(() => {
-    async function loadData() {
+    loadData();
+  }, [id]);
+
+  const loadData = async () => {
       try {
         setLoading(true);
-        const resolvedParams = await params;
-        const projectId = resolvedParams.id;
+      setError(null);
 
-        const [projectResult, plotsResult, propertiesResult] = await Promise.all([
-          getProject(projectId),
-          getProjectPlots(projectId),
-          getAvailableProperties(),
-        ]);
+      const [projectSnap, plotsSnap] = await Promise.all([
+        getDoc(doc(db, 'projects', id)),
+        getDocs(collection(db, 'projects', id, 'plots'))
+      ]);
 
-        if (!projectResult.success || !projectResult.data) {
+      if (!projectSnap.exists()) {
           setError('المشروع غير موجود');
           return;
         }
 
-        setProject(projectResult.data);
-        setPlots(plotsResult.success ? plotsResult.data || [] : []);
-        setAvailableProperties(propertiesResult.success ? propertiesResult.data || [] : []);
+      const projectData = { id: projectSnap.id, ...projectSnap.data() } as Project & { id: string };
+      setProject(projectData);
+
+      const plotsData = plotsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Plot & { id: string }));
+      setPlots(plotsData);
+
       } catch (err) {
+      console.error('Error loading data:', err);
         setError('حدث خطأ أثناء تحميل البيانات');
-        console.error('Error loading data:', err);
       } finally {
         setLoading(false);
       }
-    }
+  };
 
-    loadData();
-  }, [params]);
+  const paintPlot = (map: google.maps.Map, plot: Plot, key: string) => {
+    const poly = new google.maps.Polygon({
+      paths: plot.polygonPath,
+      strokeColor: STATUS_COLORS[plot.status as keyof typeof STATUS_COLORS],
+      strokeWeight: 2,
+      fillColor: STATUS_COLORS[plot.status as keyof typeof STATUS_COLORS],
+      fillOpacity: 0.35,
+    });
+    poly.setMap(map);
+    plotPolys.current[key] = poly;
 
-  const handlePlotDraw = useCallback(async (polygon: Coordinates[], plotNumber: string) => {
+    poly.addListener('click', (e: google.maps.MapMouseEvent) => {
+      const info = new google.maps.InfoWindow({
+        content: `
+          <div dir="rtl" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+            <h3 style="margin: 0 0 8px 0; color: #1f2937;">قطعة رقم: ${plot.number}</h3>
+            ${plot.area ? `<p style="margin: 4px 0;"><strong>المساحة:</strong> ${Math.round(plot.area)} م²</p>` : ''}
+            ${plot.price ? `<p style="margin: 4px 0;"><strong>السعر:</strong> ${plot.price.toLocaleString()} ر.س</p>` : ''}
+            <p style="margin: 4px 0;"><strong>الحالة:</strong> ${STATUS_LABELS[plot.status as keyof typeof STATUS_LABELS]}</p>
+            ${plot.notes ? `<p style="margin: 4px 0;"><strong>ملاحظات:</strong> ${plot.notes}</p>` : ''}
+          </div>
+        `
+      });
+      info.setPosition(e.latLng!);
+      info.open({ map, anchor: poly });
+    });
+  };
+
+  const onMapLoad = (map: google.maps.Map) => {
     if (!project) return;
 
-    setIsSubmitting(true);
-    try {
-      const result = await createPlot({
-        projectId: project.id,
-        number: plotNumber,
-        status: 'available',
-        price: 0,
-        currency: 'SAR',
-        polygon,
-        dimensions: {
-          area: 0, // Will be calculated by the server
-          perimeter: 0,
-        },
-        notes: '',
+    // حدود المشروع (أسود)
+    if (project.boundaryPath) {
+      boundaryPoly.current = new google.maps.Polygon({
+        paths: project.boundaryPath,
+        strokeColor: '#000',
+        strokeWeight: 2,
+        fillColor: '#000',
+        fillOpacity: 0.05,
+        clickable: false,
       });
-
-      if (result.success && result.data) {
-        setPlots(prev => [...prev, result.data!]);
-        setSelectedPlot(null);
-        setShowPlotForm(false);
-      } else {
-        setError(result.error || 'فشل إنشاء القطعة');
-      }
-    } catch (err) {
-      setError('حدث خطأ أثناء إنشاء القطعة');
-      console.error('Error creating plot:', err);
-    } finally {
-      setIsSubmitting(false);
+      boundaryPoly.current.setMap(map);
+      map.setCenter(project.center);
     }
-  }, [project]);
 
-  const handlePlotClick = useCallback((plot: Plot) => {
-    setSelectedPlot(plot);
-    setShowPlotForm(true);
-  }, []);
+    // رسم القطع الموجودة
+    plots.forEach(p => paintPlot(map, p, p.id));
 
-  const handlePlotUpdate = useCallback(async (updatedPlot: Plot) => {
-    setIsSubmitting(true);
+    // إعداد DrawingManager لرسم قطعة جديدة
+    const drawingManager = new google.maps.drawing.DrawingManager({
+      drawingMode: null,
+      drawingControl: true,
+      drawingControlOptions: {
+        position: google.maps.ControlPosition.TOP_LEFT,
+        drawingModes: [google.maps.drawing.OverlayType.POLYGON],
+      },
+      polygonOptions: {
+        fillColor: '#26A65B55',
+        strokeColor: '#26A65B',
+        strokeWeight: 2,
+        editable: true,
+      },
+    });
+    drawingManager.setMap(map);
+    drawingManagerRef.current = drawingManager;
+
+    google.maps.event.addListener(drawingManager, 'overlaycomplete', (e: any) => {
+      if (e.type !== google.maps.drawing.OverlayType.POLYGON) return;
+      
+      const pts = ensureClosed(toLatLngArray(e.overlay.getPath()));
+      
+      // التحقق من صحة المضلع
+      if (!isValidPolygon(pts)) {
+        setError('القطعة يجب أن تحتوي على 3 نقاط على الأقل');
+        e.overlay.setMap(null); // إزالة المضلع من الخريطة
+        return;
+      }
+
+      // التحقق من أن القطعة داخل حدود المشروع
+      if (project.boundaryPath && project.boundaryPath.length >= 3) {
+        const boundaryCheck = isPolygonInsideBoundary(pts, project.boundaryPath);
+        
+        if (!boundaryCheck.inside) {
+          const errorMsg = boundaryCheck.outsidePoints && boundaryCheck.outsidePoints.length > 0
+            ? `القطعة خارج حدود المشروع. ${boundaryCheck.outsidePoints.length} نقطة خارج الحدود`
+            : 'القطعة خارج حدود المشروع. يجب أن تكون جميع النقاط داخل حدود المشروع';
+          setError(errorMsg);
+          e.overlay.setMap(null); // إزالة المضلع من الخريطة
+          return;
+        }
+      }
+
+      // كشف التداخل مع القطع الموجودة
+      const existingPaths = plots.map(p => p.polygonPath);
+      const overlapCheck = checkPolygonOverlap(pts, existingPaths);
+      
+      if (overlapCheck.overlaps) {
+        setError(`القطعة الجديدة تتقاطع مع ${overlapCheck.overlappingPlot}`);
+        e.overlay.setMap(null); // إزالة المضلع من الخريطة
+        return;
+      }
+
+      setDraftPath(pts);
+      drawingManager.setDrawingMode(null);
+      setIsDrawingMode(false);
+      setError(null);
+    });
+  };
+
+  const savePlot = async () => {
+    if (!draftPath || !isValidPolygon(draftPath)) {
+      setError('ارسم قطعة صالحة أولاً');
+      return;
+    }
+
+    if (!plotNumber.trim()) {
+      setError('أدخل رقم القطعة');
+      return;
+    }
+
+    // التحقق من أن القطعة داخل حدود المشروع (فحص إضافي قبل الحفظ)
+    if (project && project.boundaryPath && project.boundaryPath.length >= 3) {
+      const boundaryCheck = isPolygonInsideBoundary(draftPath, project.boundaryPath);
+      
+      if (!boundaryCheck.inside) {
+        setError('القطعة خارج حدود المشروع. يجب أن تكون جميع النقاط داخل حدود المشروع');
+        return;
+      }
+    }
+
+    // التحقق من عدم تكرار رقم القطعة
+    const existingPlot = plots.find(p => p.number === plotNumber.trim());
+    if (existingPlot) {
+      setError('رقم القطعة موجود مسبقاً');
+      return;
+    }
+
+    // التحقق من عدم التداخل مع القطع الموجودة (فحص إضافي)
+    const existingPaths = plots.map(p => p.polygonPath);
+    const overlapCheck = checkPolygonOverlap(draftPath, existingPaths);
+    
+    if (overlapCheck.overlaps) {
+      setError(`القطعة تتقاطع مع ${overlapCheck.overlappingPlot}`);
+      return;
+    }
+
+    if (plotPrice !== '' && plotPrice < 0) {
+      setError('السعر يجب أن يكون أكبر من أو يساوي صفر');
+      return;
+    }
+
+    if (manualArea !== '' && manualArea <= 0) {
+      setError('المساحة يجب أن تكون أكبر من صفر');
+      return;
+    }
+
+    if (plotNotes.length > MAP_CONSTRAINTS.maxNotesLength) {
+      setError(`الملاحظات يجب أن تكون أقل من ${MAP_CONSTRAINTS.maxNotesLength} حرف`);
+      return;
+    }
+
     try {
-      const result = await updatePlot(updatedPlot.id, updatedPlot);
-      if (result.success && result.data) {
-        setPlots(prev => prev.map(p => p.id === updatedPlot.id ? result.data! : p));
-        setSelectedPlot(null);
-        setShowPlotForm(false);
-      } else {
-        setError(result.error || 'فشل تحديث القطعة');
-      }
+      setSaving(true);
+      setError(null);
+
+      const area = manualArea || polygonAreaSqm(draftPath);
+      const plot: Omit<Plot, 'id'> = {
+        number: plotNumber.trim(),
+        ...(plotPrice !== '' && { price: plotPrice }),
+        status: plotStatus,
+        ...(plotNotes.trim() && { notes: plotNotes.trim() }),
+        polygonPath: draftPath,
+        area,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      await addDoc(collection(db, 'projects', id, 'plots'), plot);
+      
+      // إعادة تحميل البيانات
+      await loadData();
+      
+      // تنظيف النموذج
+      setDraftPath(null);
+      setPlotNumber('');
+      setPlotPrice('');
+      setPlotStatus('available');
+      setPlotNotes('');
+      setManualArea('');
+      setIsDrawingMode(false);
+
     } catch (err) {
-      setError('حدث خطأ أثناء تحديث القطعة');
-      console.error('Error updating plot:', err);
+      console.error('Error saving plot:', err);
+      setError('حدث خطأ أثناء حفظ القطعة');
     } finally {
-      setIsSubmitting(false);
+      setSaving(false);
     }
-  }, []);
+  };
 
-  const handlePlotDelete = useCallback(async (plotId: string) => {
-    if (!confirm('هل أنت متأكد من حذف هذه القطعة؟')) return;
-
-    setIsSubmitting(true);
-    try {
-      const result = await deletePlot(plotId);
-      if (result.success) {
-        setPlots(prev => prev.filter(p => p.id !== plotId));
-        setSelectedPlot(null);
-        setShowPlotForm(false);
-      } else {
-        setError(result.error || 'فشل حذف القطعة');
-      }
-    } catch (err) {
-      setError('حدث خطأ أثناء حذف القطعة');
-      console.error('Error deleting plot:', err);
-    } finally {
-      setIsSubmitting(false);
+  const cancelDraft = () => {
+    setDraftPath(null);
+    setPlotNumber('');
+    setPlotPrice('');
+    setPlotStatus('available');
+    setPlotNotes('');
+    setManualArea('');
+    setIsDrawingMode(false);
+    setError(null);
+    // إعادة تعيين وضع الرسم
+    if (drawingManagerRef.current) {
+      drawingManagerRef.current.setDrawingMode(null);
     }
-  }, []);
-
-  const handleCancelPlotForm = useCallback(() => {
-    setSelectedPlot(null);
-    setShowPlotForm(false);
-  }, []);
+  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-          <p>جاري تحميل المشروع...</p>
-        </div>
+      <div className="space-y-6">
+        <div className="h-8 bg-muted animate-pulse rounded w-64" />
+        <div className="h-96 bg-muted animate-pulse rounded-xl" />
       </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <Alert variant="destructive">
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
     );
   }
 
   if (!project) {
     return (
-      <Alert variant="destructive">
-        <AlertDescription>المشروع غير موجود</AlertDescription>
-      </Alert>
+      <div className="text-center py-8">
+        <p className="text-muted-foreground">المشروع غير موجود</p>
+      </div>
     );
   }
 
-  // Calculate statistics
-  const stats = {
-    total: plots.length,
-    available: plots.filter(p => p.status === 'available').length,
-    sold: plots.filter(p => p.status === 'sold').length,
-    reserved: plots.filter(p => p.status === 'reserved').length,
-  };
-
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">{project.name}</h1>
-          <p className="text-muted-foreground">{project.description || 'لا يوجد وصف'}</p>
-        </div>
-        <Button variant="outline" onClick={() => router.push('/admin/projects')}>
-          العودة للمشاريع
-        </Button>
+        <h1 className="text-3xl font-bold">إدارة مشروع: {project.name}</h1>
+        <Badge variant="outline">
+          {plots.length} قطعة
+        </Badge>
       </div>
 
-      {/* Statistics */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       <Card>
         <CardHeader>
-          <CardTitle>إحصائيات المشروع</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>خريطة المشروع</span>
+            <Badge variant="outline" className="text-sm">
+              {!draftPath ? 'جاهز لإضافة قطعة جديدة' : 'قطعة جديدة قيد الإدخال'}
+            </Badge>
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="flex items-center space-x-2 rtl:space-x-reverse">
-              <BarChart3 className="h-5 w-5 text-primary" />
+          <div className="space-y-3 mb-4">
+            <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2 flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                كيفية إضافة قطعة جديدة:
+              </h4>
+              <ol className="list-decimal list-inside space-y-1 text-sm text-blue-800 dark:text-blue-200">
+                <li>انقر على زر "ابدأ إضافة قطعة جديدة" أدناه أو على أيقونة الرسم في أعلى يسار الخريطة (أيقونة المضلع 📐)</li>
+                <li>ارسم القطعة على الخريطة داخل حدود المشروع السوداء</li>
+                <li>بعد الانتهاء من الرسم، سيظهر نموذج أدناه لملء بيانات القطعة</li>
+                <li>املأ البيانات المطلوبة واضغط على "حفظ القطعة"</li>
+              </ol>
+            </div>
+            <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+              <span><span className="font-semibold">الحدود السوداء:</span> حدود المشروع</span>
+              <span>•</span>
+              <span><span className="font-semibold">القطع الملونة:</span> حسب الحالة</span>
+              <span className="inline-flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                متاحة
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-orange-500"></span>
+                محجوزة
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-red-500"></span>
+                مباعة
+              </span>
+            </div>
+            <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded p-2">
+              ⚠️ <span className="font-semibold">مهم:</span> يجب أن تكون جميع القطع المرسومة داخل حدود المشروع (الحدود السوداء)
+            </p>
+            {!draftPath && (
+              <div className="flex items-center gap-4 pt-2">
+                <Button
+                  onClick={() => {
+                    if (drawingManagerRef.current) {
+                      drawingManagerRef.current.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
+                      setIsDrawingMode(true);
+                    }
+                  }}
+                  className="flex items-center gap-2"
+                  size="lg"
+                  disabled={isDrawingMode}
+                >
+                  <Plus className="h-5 w-5" />
+                  {isDrawingMode ? 'وضع الرسم نشط - ارسم على الخريطة' : 'ابدأ إضافة قطعة جديدة'}
+                </Button>
+                {isDrawingMode && (
+                  <Button
+                    onClick={() => {
+                      if (drawingManagerRef.current) {
+                        drawingManagerRef.current.setDrawingMode(null);
+                        setIsDrawingMode(false);
+                      }
+                    }}
+                    variant="outline"
+                    size="lg"
+                  >
+                    إلغاء الرسم
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+                 <div className="relative">
+          <GMap center={project.center} onMapLoad={onMapLoad} height="600px" mapType="satellite" />
+          {!draftPath && isDrawingMode && (
+            <div className="absolute top-4 left-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-10 flex items-center gap-2">
+              <span className="animate-pulse">●</span>
+              <span className="font-semibold">وضع الرسم نشط - انقر على الخريطة لبدء الرسم</span>
+            </div>
+          )}
+        </div>
+        </CardContent>
+      </Card>
+
+      {draftPath && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5" />
+              بيانات القطعة الجديدة
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-muted-foreground">إجمالي القطع</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
+                <Label htmlFor="plotNumber">رقم القطعة *</Label>
+                <Input
+                  id="plotNumber"
+                  placeholder="مثال: 1، أ، ب"
+                  value={plotNumber}
+                  onChange={(e) => setPlotNumber(e.target.value)}
+                  disabled={saving}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="plotPrice">السعر (ر.س)</Label>
+                <Input
+                  id="plotPrice"
+                  type="number"
+                  placeholder="مثال: 500000"
+                  value={plotPrice}
+                  onChange={(e) => setPlotPrice(Number(e.target.value) || '')}
+                  disabled={saving}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="plotStatus">الحالة</Label>
+                <Select value={plotStatus} onValueChange={(value: PlotStatus) => setPlotStatus(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="available">متاحة</SelectItem>
+                    <SelectItem value="hold">محجوزة</SelectItem>
+                    <SelectItem value="sold">مباعة</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="manualArea">المساحة (م²)</Label>
+                <Input
+                  id="manualArea"
+                  type="number"
+                  placeholder={`محسوب تلقائياً: ${Math.round(polygonAreaSqm(draftPath))}`}
+                  value={manualArea}
+                  onChange={(e) => setManualArea(Number(e.target.value) || '')}
+                  disabled={saving}
+                />
               </div>
             </div>
-            <div className="flex items-center space-x-2 rtl:space-x-reverse">
-              <Badge style={{ backgroundColor: PLOT_STATUS_COLORS.available }} className="h-5 w-5 flex items-center justify-center text-white"></Badge>
-              <div>
-                <p className="text-sm text-muted-foreground">متاحة</p>
-                <p className="text-2xl font-bold">{stats.available}</p>
-              </div>
+
+            <div>
+              <Label htmlFor="plotNotes">ملاحظات</Label>
+              <Textarea
+                id="plotNotes"
+                placeholder="ملاحظات إضافية..."
+                value={plotNotes}
+                onChange={(e) => setPlotNotes(e.target.value)}
+                rows={3}
+                disabled={saving}
+                maxLength={MAP_CONSTRAINTS.maxNotesLength}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {plotNotes.length}/{MAP_CONSTRAINTS.maxNotesLength} حرف
+              </p>
             </div>
-            <div className="flex items-center space-x-2 rtl:space-x-reverse">
-              <Badge style={{ backgroundColor: PLOT_STATUS_COLORS.sold }} className="h-5 w-5 flex items-center justify-center text-white"></Badge>
-              <div>
-                <p className="text-sm text-muted-foreground">مباعة</p>
-                <p className="text-2xl font-bold">{stats.sold}</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2 rtl:space-x-reverse">
-              <Badge style={{ backgroundColor: PLOT_STATUS_COLORS.reserved }} className="h-5 w-5 flex items-center justify-center text-white"></Badge>
-              <div>
-                <p className="text-sm text-muted-foreground">محجوزة</p>
-                <p className="text-2xl font-bold">{stats.reserved}</p>
-              </div>
-            </div>
+
+            <div className="flex gap-4">
+              <Button 
+                onClick={savePlot} 
+                disabled={saving || !plotNumber.trim()}
+                size="lg"
+              >
+                <Save className="h-4 w-4 ml-2" />
+                {saving ? 'جاري الحفظ...' : 'حفظ القطعة'}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={cancelDraft}
+                size="lg"
+                disabled={saving}
+              >
+                <X className="h-4 w-4 ml-2" />
+                إلغاء
+              </Button>
           </div>
         </CardContent>
       </Card>
+      )}
 
-      {/* Interactive Map */}
-      <Card>
-        <CardHeader>
-          <CardTitle>الخريطة التفاعلية</CardTitle>
-          <CardDescription>
-            اضغط على الخريطة لرسم القطع الجديدة أو انقر على القطع الموجودة لعرض التفاصيل
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <InteractiveMap
-            project={project}
-            plots={plots}
-            mode="edit"
-            onPlotDraw={handlePlotDraw}
-            onPlotClick={handlePlotClick}
-            onPlotUpdate={handlePlotUpdate}
-            onPlotDelete={handlePlotDelete}
-            selectedPlotId={selectedPlot?.id}
-            className="rounded-lg border"
-          />
-        </CardContent>
-      </Card>
-
-      {/* Plot Form */}
-      {showPlotForm && (
+      {plots.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>
-              {selectedPlot ? `تعديل القطعة: ${selectedPlot.number}` : 'إضافة قطعة جديدة'}
-            </CardTitle>
-            <CardDescription>
-              {selectedPlot ? 'تعديل تفاصيل القطعة المختارة.' : 'أدخل تفاصيل القطعة الجديدة بعد رسمها على الخريطة.'}
-            </CardDescription>
+            <CardTitle>القطع الموجودة ({plots.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            <PlotForm
-              initialData={selectedPlot || undefined}
-              projectId={project.id}
-              properties={availableProperties}
-              onSubmit={selectedPlot ? handlePlotUpdate : handlePlotDraw}
-              onCancel={handleCancelPlotForm}
-              isSubmitting={isSubmitting}
-              error={error}
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {plots.map((plot) => (
+                <div key={plot.id} className="border rounded-lg p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold">قطعة {plot.number}</h3>
+                    <Badge 
+                      style={{ 
+                        backgroundColor: STATUS_COLORS[plot.status as keyof typeof STATUS_COLORS],
+                        color: 'white'
+                      }}
+                    >
+                      {STATUS_LABELS[plot.status as keyof typeof STATUS_LABELS]}
+                    </Badge>
+                  </div>
+                  {plot.area && (
+                    <p className="text-sm text-muted-foreground">
+                      المساحة: {Math.round(plot.area)} م²
+                    </p>
+                  )}
+                  {plot.price && (
+                    <p className="text-sm text-muted-foreground">
+                      السعر: {plot.price.toLocaleString()} ر.س
+                    </p>
+                  )}
+                  {plot.notes && (
+                    <p className="text-sm text-muted-foreground">
+                      {plot.notes.substring(0, 50)}{plot.notes.length > 50 ? '...' : ''}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}
-
-      {/* Plots List */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>قائمة القطع</CardTitle>
-            <div className="flex gap-2">
-              <Button onClick={() => setShowPlotForm(true)}>
-                <Plus className="h-4 w-4 ml-2" />
-                إضافة قطعة جديدة
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {plots.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <MapPin className="h-12 w-12 mx-auto mb-4" />
-              <p>لا توجد قطع في هذا المشروع حتى الآن</p>
-              <p className="text-sm">ارسم قطعة على الخريطة أو اضغط على &quot;إضافة قطعة جديدة&quot;</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>رقم القطعة</TableHead>
-                  <TableHead>الحالة</TableHead>
-                  <TableHead>السعر</TableHead>
-                  <TableHead>المساحة</TableHead>
-                  <TableHead>المحيط</TableHead>
-                  <TableHead>مرتبط بعقار</TableHead>
-                  <TableHead className="text-right">الإجراءات</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {plots.map((plot) => (
-                  <TableRow key={plot.id}>
-                    <TableCell className="font-medium">{plot.number}</TableCell>
-                    <TableCell>
-                      <Badge style={{ backgroundColor: PLOT_STATUS_COLORS[plot.status] }} className="text-white">
-                        {PLOT_STATUS_LABELS[plot.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{plot.price.toLocaleString()} {plot.currency}</TableCell>
-                    <TableCell>{formatArea(plot.dimensions.area)}</TableCell>
-                    <TableCell>{formatPerimeter(plot.dimensions.perimeter)}</TableCell>
-                    <TableCell>
-                      {plot.propertyId ? (
-                        <Badge variant="outline">{plot.propertyId}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" onClick={() => handlePlotClick(plot)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="destructive" size="sm" onClick={() => handlePlotDelete(plot.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

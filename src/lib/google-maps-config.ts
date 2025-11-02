@@ -1,5 +1,6 @@
 // Google Maps configuration constants to prevent reload warnings
-export const GOOGLE_MAPS_LIBRARIES = ['drawing', 'geometry'] as const;
+// Include all libraries needed across the app to avoid Loader conflicts
+export const GOOGLE_MAPS_LIBRARIES = ['drawing', 'geometry', 'places'] as const;
 export const GOOGLE_MAPS_VERSION = 'weekly' as const;
 export const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 
@@ -29,4 +30,25 @@ export const SAUDI_CITIES = [
   { name: 'المدينة', lat: 24.5247, lng: 39.5692 },
   { name: 'الدمام', lat: 26.4207, lng: 50.0888 },
 ] as const;
+
+// Project system colors and labels
+export const STATUS_COLORS = {
+  available: '#26A65B',
+  hold: '#F5A623',
+  sold: '#D0021B',
+} as const;
+
+export const STATUS_LABELS = {
+  available: 'متاحة',
+  hold: 'محجوزة',
+  sold: 'مباعة',
+} as const;
+
+// Map constraints
+export const MAP_CONSTRAINTS = {
+  minPolygonPoints: 3,
+  maxPlotsPerProject: 1000,
+  maxImagesPerPlot: 10,
+  maxNotesLength: 500,
+} as const;
 

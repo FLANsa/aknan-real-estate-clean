@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase/client';
 import { collection, getDocs, limit, query, where } from 'firebase/firestore';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PropertyMap from '@/components/PropertyMap';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -256,19 +257,19 @@ export default async function PropertyDetailsPage({ params }: PropertyDetailsPag
                 </Card>
               )}
 
-              {/* Map Placeholder */}
+              {/* Map */}
               {(property.lat && property.lng) && (
                 <Card>
                   <CardHeader>
                     <CardTitle>الموقع على الخريطة</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-                      <div className="text-center text-muted-foreground">
-                        <MapPin className="h-12 w-12 mx-auto mb-2" />
-                        <p>الموقع على الخريطة</p>
-                        <p className="text-sm">سيتم إضافة الخريطة قريباً</p>
-                      </div>
+                    <div className="aspect-video rounded-lg overflow-hidden">
+                      <PropertyMap
+                        lat={property.lat}
+                        lng={property.lng}
+                        title={property.titleAr}
+                      />
                     </div>
                   </CardContent>
                 </Card>

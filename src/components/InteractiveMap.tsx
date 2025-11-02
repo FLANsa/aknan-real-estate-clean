@@ -43,7 +43,7 @@ export default function InteractiveMap({
   className = '',
 }: InteractiveMapProps) {
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'interactive-map-loader',
+    id: 'google-maps-loader',
     googleMapsApiKey: GOOGLE_MAPS_API_KEY,
     libraries: GOOGLE_MAPS_LIBRARIES,
   });

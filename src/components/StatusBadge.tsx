@@ -35,3 +35,7 @@ export function StatusBadge({ status, type = 'contact' }: StatusBadgeProps) {
   );
 }
 
+
+
+
+

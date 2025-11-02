@@ -20,7 +20,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Loader2, Save, Trash2 } from 'lucide-react';
 import ImageUploader from '@/components/ImageUploader';
+import LocationPicker from '@/components/LocationPicker';
 import { PROPERTY_PURPOSE_LABELS, PROPERTY_TYPE_LABELS, PROPERTY_STATUS_LABELS } from '@/types/property';
+import { MAP_CONFIG } from '@/lib/google-maps-config';
 
 interface EditPropertyPageProps {
   params: {
@@ -35,6 +37,11 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [location, setLocation] = useState<{ lat: number; lng: number }>({ 
+    lat: MAP_CONFIG.defaultCenter.lat, 
+    lng: MAP_CONFIG.defaultCenter.lng 
+  });
+  const [zoom, setZoom] = useState<number>(MAP_CONFIG.defaultZoom);
   const router = useRouter();
 
   const {
@@ -58,6 +65,12 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
           const property = result.data;
           setImages(property.images);
           
+          const propertyLat = property.lat || MAP_CONFIG.defaultCenter.lat;
+          const propertyLng = property.lng || MAP_CONFIG.defaultCenter.lng;
+          
+          setLocation({ lat: propertyLat, lng: propertyLng });
+          setZoom(MAP_CONFIG.defaultZoom);
+          
           reset({
             titleAr: property.titleAr,
             descriptionAr: property.descriptionAr,
@@ -71,12 +84,11 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
             bathrooms: property.bathrooms,
             floor: property.floor,
             price: property.price,
-            currency: property.currency || 'SAR',
             status: property.status,
             features: property.features,
             yearBuilt: property.yearBuilt,
-            lat: property.lat,
-            lng: property.lng,
+            lat: propertyLat,
+            lng: propertyLng,
             featured: property.featured,
             images: property.images,
           });
@@ -102,6 +114,8 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
       const formData = {
         ...data,
         images,
+        lat: location.lat,
+        lng: location.lng,
       };
 
       const result = await updateProperty(params.id, formData);
@@ -424,6 +438,31 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
               />
               <Label htmlFor="featured">عقار مميز</Label>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Location */}
+        <Card>
+          <CardHeader>
+            <CardTitle>موقع العقار</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <LocationPicker
+              center={location}
+              zoom={zoom}
+              onLocationChange={(newLocation, newZoom) => {
+                setLocation(newLocation);
+                setZoom(newZoom);
+                setValue('lat', newLocation.lat);
+                setValue('lng', newLocation.lng);
+              }}
+              disabled={isSubmitting || isDeleting}
+            />
+            {(errors.lat || errors.lng) && (
+              <p className="text-sm text-destructive mt-2">
+                {errors.lat?.message || errors.lng?.message}
+              </p>
+            )}
           </CardContent>
         </Card>
 

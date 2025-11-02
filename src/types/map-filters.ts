@@ -6,3 +6,5 @@ export interface MapFiltersState {
   priceRange: [number, number];
 }
 
+
+

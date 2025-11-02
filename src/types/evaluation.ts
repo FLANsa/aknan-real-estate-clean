@@ -51,3 +51,7 @@ export const PROPERTY_TYPE_LABELS: Record<EvaluationRequest['propertyType'], str
   land: 'أرض',
 };
 
+
+
+
+
