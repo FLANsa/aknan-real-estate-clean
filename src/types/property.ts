@@ -32,7 +32,9 @@ export interface Property {
   featured?: boolean;
   
   slug: string;
-  plotId?: string; // bidirectional link to plot
+  plotId?: string; // ربط بالقطعة (اختياري)
+  projectId?: string; // ربط بالمشروع (اختياري)
+  plotNumber?: string; // رقم القطعة للعرض
   createdAt: Date;
   updatedAt: Date;
   createdBy: string;
@@ -64,7 +66,9 @@ export interface PropertyFormData {
   
   images: string[];
   featured?: boolean;
-  plotId?: string; // bidirectional link to plot
+  plotId?: string; // ربط بالقطعة (اختياري)
+  projectId?: string; // ربط بالمشروع (اختياري)
+  plotNumber?: string; // رقم القطعة للعرض
 }
 
 export interface PropertyFilters {
@@ -80,6 +84,7 @@ export interface PropertyFilters {
   maxPrice?: number;
   status?: PropertyStatus;
   featured?: boolean;
+  projectId?: string; // فلتر بالمشروع
 }
 
 export interface PropertyListResponse {

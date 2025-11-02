@@ -61,6 +61,11 @@ export default function PropertyCard({ property }: PropertyCardProps) {
             <MapPin className="h-3 w-3 md:h-4 md:w-4 ml-1" />
             {property.district && `${property.district}, `}{property.city}
           </div>
+          {property.plotNumber && (
+            <div className="text-xs md:text-sm text-blue-600 mt-1">
+              قطعة رقم: {property.plotNumber}
+            </div>
+          )}
         </div>
         
         <div className="flex items-center justify-between">

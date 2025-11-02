@@ -1,18 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/server';
+import { adminDb } from '@/lib/firebase/admin';
+import { Project } from '@/types/map';
 
 export async function GET(req: NextRequest) {
   try {
-    // For now, allow without auth for testing
-    // await requireAdminUser(req);
-    
-    // Check if projects collection exists, if not return empty array
-    const snap = await db.collection('projects').limit(10).get();
-    const items = snap.docs.map(d=>({ id:d.id, ...d.data() }));
-    return NextResponse.json({ items });
+    const snapshot = await adminDb.collection('projects').get();
+    const projects = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate() || new Date(),
+      updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+    })) as Project[];
+
+    return NextResponse.json({ projects });
   } catch (error) {
     console.error('Error fetching projects:', error);
-    // Return empty array if collection doesn't exist
-    return NextResponse.json({ items: [] });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    
+    const projectData = {
+      name: body.name,
+      description: body.description || null,
+      location: body.location,
+      zoom: body.zoom || 15,
+      boundary: body.boundary || null,
+      plotsCount: 0,
+      availablePlotsCount: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const docRef = await adminDb.collection('projects').add(projectData);
+    
+    return NextResponse.json({ 
+      id: docRef.id,
+      message: 'تم إنشاء المشروع بنجاح'
+    });
+  } catch (error) {
+    console.error('Error creating project:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

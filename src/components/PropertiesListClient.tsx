@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
 import { Property } from '@/types/property';
+import { Project } from '@/types/map';
 
 interface PropertiesListClientProps {
   searchParams: Record<string, string | string[] | undefined>;
@@ -21,6 +22,7 @@ export default function PropertiesListClient({
   const [properties, setProperties] = useState<Property[]>([]);
   const [cities, setCities] = useState<string[]>([]);
   const [districts, setDistricts] = useState<string[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
 
   const filters = useMemo(() => {
     console.log('PropertiesListClient: Raw searchParams:', searchParams);
@@ -79,6 +81,10 @@ export default function PropertiesListClient({
         if ((filters as any).status && (filters as any).status !== 'all') {
           console.log('PropertiesListClient: Adding status filter:', (filters as any).status);
           qRef = query(qRef, where('status', '==', (filters as any).status));
+        }
+        if ((filters as any).projectId && (filters as any).projectId !== 'all') {
+          console.log('PropertiesListClient: Adding projectId filter:', (filters as any).projectId);
+          qRef = query(qRef, where('projectId', '==', (filters as any).projectId));
         }
 
         const snap = await getDocs(qRef);
@@ -140,6 +146,17 @@ export default function PropertiesListClient({
         });
         setCities(Array.from(citySet).sort());
         setDistricts(Array.from(districtSet).sort());
+
+        // Fetch projects
+        try {
+          const projectsResponse = await fetch('/api/admin/projects');
+          const projectsData = await projectsResponse.json();
+          if (projectsData.projects) {
+            setProjects(projectsData.projects);
+          }
+        } catch (error) {
+          console.error('Error fetching projects:', error);
+        }
       } catch (e) {
         console.error('PropertiesListClient: Error fetching properties:', e);
         console.error('PropertiesListClient: Error details:', {
@@ -168,7 +185,7 @@ export default function PropertiesListClient({
 
   return (
     <div className="space-y-8">
-      <PropertyFilters cities={cities} districts={districts} />
+      <PropertyFilters cities={cities} districts={districts} projects={projects} />
 
       {properties.length === 0 ? (
         <Card>

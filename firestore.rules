@@ -79,6 +79,34 @@ service cloud.firestore {
       allow read: if true;
       allow write: if false; // Admin SDK only
     }
+    
+    // Projects collection - public read, admin write
+    match /projects/{projectId} {
+      allow read: if true; // الجميع يمكنهم القراءة
+      allow create, update, delete: if false; // فقط من خلال Admin SDK
+    }
+    
+    // Plots collection - public read, admin write
+    match /plots/{plotId} {
+      allow read: if true; // الجميع يمكنهم القراءة
+      allow create, update, delete: if false; // فقط من خلال Admin SDK
+    }
+    
+    // Properties collection - public read, admin write
+    match /properties/{propertyId} {
+      allow read: if true; // الجميع يمكنهم القراءة
+      allow create, update, delete: if false; // فقط من خلال Admin SDK
+    }
+    
+    // Contact messages - admin only
+    match /contact_messages/{messageId} {
+      allow read, write: if false; // فقط من خلال Admin SDK
+    }
+    
+    // Evaluation requests - admin only
+    match /evaluation_requests/{requestId} {
+      allow read, write: if false; // فقط من خلال Admin SDK
+    }
   }
 }
 

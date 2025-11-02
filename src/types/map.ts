@@ -1,41 +1,43 @@
 export type PlotStatus = 'available' | 'sold' | 'reserved';
-export type Currency = 'SAR' | 'USD';
 
 export interface Coordinates {
   lat: number;
   lng: number;
 }
 
-export interface PlotDimensions {
-  area: number; // in square meters
-  perimeter: number; // in meters
-}
-
 export interface Plot {
   id: string;
   projectId: string;
-  number: string; // custom input by admin
+  plotNumber: string; // رقم القطعة
+  polygon: Coordinates[]; // إحداثيات القطعة على الخريطة
+  
+  // بيانات مُدخلة يدوياً (ليست محسوبة)
+  manualArea: number; // المساحة بالمتر المربع
+  price: number; // السعر بالريال السعودي (SAR)
+  
+  // بيانات إضافية
+  images: string[]; // صور القطعة
   status: PlotStatus;
-  price: number;
-  currency: Currency;
-  polygon: Coordinates[]; // vertices of the polygon
-  center?: Coordinates; // center coordinates for map display
-  dimensions: PlotDimensions;
   notes?: string;
-  propertyId?: string; // bidirectional link to property
+  
+  // ربط مع العقارات
+  linkedPropertyIds: string[];
+  
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface Project {
   id: string;
-  name: string;
-  location: Coordinates; // center coordinates
-  zoom: number;
-  description?: string;
+  name: string; // اسم المشروع
+  description?: string; // وصف المشروع
+  location: Coordinates; // موقع المشروع على الخريطة
+  zoom: number; // مستوى التقريب
+  boundary?: Coordinates[]; // حدود البلوك السكني (أطراف سوداء)
+  plotsCount: number; // عدد القطع
+  availablePlotsCount: number;
   createdAt: Date;
   updatedAt: Date;
-  createdBy: string;
 }
 
 export interface ProjectFormData {
@@ -47,13 +49,13 @@ export interface ProjectFormData {
 
 export interface PlotFormData {
   projectId: string;
-  number: string;
-  status: PlotStatus;
-  price: number;
-  currency: Currency;
+  plotNumber: string;
+  manualArea: number; // المساحة بالمتر المربع
+  price: number; // السعر بالريال السعودي
   polygon: Coordinates[];
+  images?: string[];
+  status: PlotStatus;
   notes?: string;
-  propertyId?: string;
 }
 
 // Arabic labels for UI
@@ -67,11 +69,6 @@ export const PLOT_STATUS_COLORS: Record<PlotStatus, string> = {
   available: '#22c55e', // green
   sold: '#ef4444', // red
   reserved: '#eab308', // yellow
-};
-
-export const CURRENCY_LABELS: Record<Currency, string> = {
-  SAR: 'ريال',
-  USD: 'دولار',
 };
 
 // Major Saudi cities for quick location selection
