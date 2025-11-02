@@ -16,7 +16,6 @@ export default function Footer() {
             <h4 className="text-sm font-semibold">روابط سريعة</h4>
             <ul className="space-y-2 text-sm">
               <li><Link href="/properties" className="hover:text-primary">العقارات</Link></li>
-              <li><Link href="/about" className="hover:text-primary">من نحن</Link></li>
               <li><Link href="/contact" className="hover:text-primary">اتصل بنا</Link></li>
             </ul>
           </div>
@@ -26,7 +25,6 @@ export default function Footer() {
             <ul className="space-y-2 text-sm">
               <li>بيع العقارات</li>
               <li>إيجار العقارات</li>
-              <li><Link href="/evaluation" className="hover:text-primary">تقييم العقارات</Link></li>
               <li>الاستشارات العقارية</li>
             </ul>
           </div>

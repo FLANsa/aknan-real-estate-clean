@@ -84,22 +84,6 @@ export default function Header() {
             </Link>
             
             <Link 
-              href="/evaluation" 
-              className="relative group px-4 py-2 text-sm font-medium text-white transition-all duration-300 hover:text-aknan-400 rounded-lg hover:bg-white/5"
-            >
-              <span className="relative z-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">تقييم العقار</span>
-              <div className="absolute inset-0 bg-gradient-to-r from-aknan-500/20 to-transparent rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </Link>
-            
-            <Link 
-              href="/about" 
-              className="relative group px-4 py-2 text-sm font-medium text-white transition-all duration-300 hover:text-aknan-400 rounded-lg hover:bg-white/5"
-            >
-              <span className="relative z-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">من نحن</span>
-              <div className="absolute inset-0 bg-gradient-to-r from-aknan-500/20 to-transparent rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </Link>
-            
-            <Link 
               href="/contact" 
               className="relative group px-4 py-2 text-sm font-medium text-white transition-all duration-300 hover:text-aknan-400 rounded-lg hover:bg-white/5"
             >
@@ -156,8 +140,6 @@ export default function Header() {
                   المشاريع السكنية
                 </MenuItem>
                 <MenuItem href="/map" onClick={close}>الخريطة العقارية</MenuItem>
-                <MenuItem href="/evaluation" onClick={close}>تقييم العقار</MenuItem>
-                <MenuItem href="/about" onClick={close}>من نحن</MenuItem>
                 <MenuItem href="/contact" onClick={close}>اتصل بنا</MenuItem>
               </nav>
 
