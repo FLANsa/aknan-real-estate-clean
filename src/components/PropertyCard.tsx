@@ -1,32 +1,34 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import React, { memo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Property } from '@/types/property';
 import { PROPERTY_STATUS_LABELS, PROPERTY_TYPE_LABELS, CURRENCY_LABELS } from '@/types/property';
 import { MapPin, Bed, Bath, Square } from 'lucide-react';
+import { optimizeImages } from '@/lib/performance';
 
 interface PropertyCardProps {
   property: Property;
 }
 
-export default function PropertyCard({ property }: PropertyCardProps) {
+function PropertyCard({ property }: PropertyCardProps) {
   const mainImage = property.images?.[0] || '/placeholder-property.jpg';
+  const optimizedImage = optimizeImages.getOptimizedUrl(mainImage, 400, 300);
   
   return (
     <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 h-full flex flex-col">
       <div className="aspect-[4/3] relative">
         <Image
-          src={mainImage}
-          alt={property.titleAr}
+          src={optimizedImage}
+          alt={property.titleAr || property.title || 'عقار'}
           fill
           className="object-cover"
           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          priority={false}
           loading="lazy"
           placeholder="blur"
-          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
+          blurDataURL={optimizeImages.getSimpleBlurDataURL()}
           onError={(e) => {
             // Fallback to placeholder if image fails to load
             const target = e.target as HTMLImageElement;
@@ -108,4 +110,12 @@ export default function PropertyCard({ property }: PropertyCardProps) {
   );
 }
 
-
+// Memoize component to prevent unnecessary re-renders
+export default memo(PropertyCard, (prevProps, nextProps) => {
+  // Only re-render if property data actually changed
+  return (
+    prevProps.property.id === nextProps.property.id &&
+    prevProps.property.updatedAt?.getTime() === nextProps.property.updatedAt?.getTime() &&
+    prevProps.property.images?.join(',') === nextProps.property.images?.join(',')
+  );
+});

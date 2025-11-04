@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { X, Filter, Check, RotateCcw } from 'lucide-react';
-import { PROPERTY_PURPOSE_LABELS, PROPERTY_TYPE_LABELS, PROPERTY_STATUS_LABELS } from '@/types/property';
+import { logger } from '@/lib/performance';
 
 interface PropertyFiltersProps {
   cities: string[];
@@ -72,8 +72,8 @@ const applyFiltersToUrl = (filters: FilterValues, router: ReturnType<typeof useR
     
     const newUrl = `/properties?${params.toString()}`;
     router.push(newUrl);
-  } catch (error) {
-    console.error('Error updating URL:', error);
+        } catch (error) {
+          logger.error('Error updating URL:', error);
   }
 };
 

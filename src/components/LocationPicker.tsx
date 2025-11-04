@@ -8,7 +8,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { MapPin, Navigation } from 'lucide-react';
 import { GOOGLE_MAPS_API_KEY, SAUDI_CITIES } from '@/lib/google-maps-config';
-import GoogleMapsErrorHandler from './GoogleMapsErrorHandler';
+import { logger } from '@/lib/performance';
 
 interface LocationPickerProps {
   center: { lat: number; lng: number };
@@ -105,7 +105,7 @@ export default function LocationPicker({ center, zoom, onLocationChange, disable
         onLocationChange(newLocation, newZoom);
       },
       (error) => {
-        console.error('Error getting current location:', error);
+        logger.error('Error getting current location:', error);
         alert('تعذر الحصول على الموقع الحالي');
       }
     );

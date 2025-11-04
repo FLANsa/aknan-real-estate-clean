@@ -15,13 +15,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle, Phone, Mail, MapPin, Clock, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
+import { logger } from '@/lib/performance';
 
 // Schema for contact form
 const contactSchema = z.object({
   name: z.string().min(2, 'الاسم مطلوب').max(100, 'الاسم طويل جداً'),
   email: z.string().email('البريد الإلكتروني غير صحيح'),
   phone: z.string().min(10, 'رقم الهاتف مطلوب').max(15, 'رقم الهاتف طويل جداً'),
-  subject: z.enum(['general', 'property_inquiry', 'evaluation', 'support', 'other']),
+  subject: z.enum(['general', 'property_inquiry', 'support', 'other']),
   message: z.string().min(10, 'الرسالة قصيرة جداً').max(1000, 'الرسالة طويلة جداً'),
 });
 
@@ -30,7 +31,7 @@ type ContactFormData = z.infer<typeof contactSchema>;
 const SUBJECT_LABELS = {
   general: 'استفسار عام',
   property_inquiry: 'استفسار عن عقار',
-  evaluation: 'طلب تقييم عقار',
+  
   support: 'دعم فني',
   other: 'أخرى',
 };
@@ -65,14 +66,14 @@ export default function ContactPage() {
 
     try {
       // Here you would typically send the data to your backend
-      console.log('Contact form data:', data);
+      logger.log('Contact form data:', data);
       
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       setSubmitSuccess(true);
     } catch (error) {
-      console.error('Error submitting contact form:', error);
+      logger.error('Error submitting contact form:', error);
       setError('حدث خطأ أثناء إرسال الرسالة. يرجى المحاولة مرة أخرى.');
     } finally {
       setIsSubmitting(false);

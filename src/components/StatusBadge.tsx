@@ -1,10 +1,9 @@
 import { Badge } from '@/components/ui/badge';
 import { ContactStatus, CONTACT_STATUS_LABELS } from '@/types/contact';
-import { EvaluationStatus, EVALUATION_STATUS_LABELS } from '@/types/evaluation';
 
 interface StatusBadgeProps {
-  status: ContactStatus | EvaluationStatus;
-  type?: 'contact' | 'evaluation';
+  status: ContactStatus | string;
+  type?: 'contact';
 }
 
 const getStatusColor = (status: string) => {
@@ -24,8 +23,8 @@ const getStatusColor = (status: string) => {
   }
 };
 
-export function StatusBadge({ status, type = 'contact' }: StatusBadgeProps) {
-  const labels = type === 'contact' ? CONTACT_STATUS_LABELS : EVALUATION_STATUS_LABELS;
+export function StatusBadge({ status }: StatusBadgeProps) {
+  const labels = CONTACT_STATUS_LABELS as Record<string, string>;
   const colorClass = getStatusColor(status);
   
   return (
@@ -34,6 +33,7 @@ export function StatusBadge({ status, type = 'contact' }: StatusBadgeProps) {
     </Badge>
   );
 }
+
 
 
 

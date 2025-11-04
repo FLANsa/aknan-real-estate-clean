@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
 import { Property } from '@/types/property';
 import { Project } from '@/types/map';
+import { logger } from '@/lib/performance';
 
 interface PropertiesListClientProps {
   searchParams: Record<string, string | string[] | undefined>;
@@ -25,7 +26,7 @@ export default function PropertiesListClient({
   const [projects, setProjects] = useState<Project[]>([]);
 
   const filters = useMemo(() => {
-    console.log('PropertiesListClient: Raw searchParams:', searchParams);
+    logger.log('PropertiesListClient: Raw searchParams:', searchParams);
     
     // Handle both string and object searchParams
     if (typeof searchParams === 'string') {
@@ -49,47 +50,47 @@ export default function PropertiesListClient({
 
   useEffect(() => {
     let isMounted = true;
-    async function fetchData() {
-      setLoading(true);
-      try {
-        console.log('PropertiesListClient: Starting fetchData');
-        console.log('PropertiesListClient: Firebase db:', db);
-        
-        let qRef: any = query(
+      async function fetchData() {
+        setLoading(true);
+        try {
+          logger.log('PropertiesListClient: Starting fetchData');
+          logger.log('PropertiesListClient: Firebase db:', db);
+          
+          let qRef: any = query(
           collection(db, 'properties')
         );
 
-        console.log('PropertiesListClient: Base query created');
+        logger.log('PropertiesListClient: Base query created');
 
         // Apply filters without orderBy to avoid index requirements
         if ((filters as any).city && (filters as any).city !== 'all') {
-          console.log('PropertiesListClient: Adding city filter:', (filters as any).city);
+          logger.log('PropertiesListClient: Adding city filter:', (filters as any).city);
           qRef = query(qRef, where('city', '==', (filters as any).city));
         }
         if ((filters as any).district && (filters as any).district !== 'all') {
-          console.log('PropertiesListClient: Adding district filter:', (filters as any).district);
+          logger.log('PropertiesListClient: Adding district filter:', (filters as any).district);
           qRef = query(qRef, where('district', '==', (filters as any).district));
         }
         if ((filters as any).type && (filters as any).type !== 'all') {
-          console.log('PropertiesListClient: Adding type filter:', (filters as any).type);
+          logger.log('PropertiesListClient: Adding type filter:', (filters as any).type);
           qRef = query(qRef, where('type', '==', (filters as any).type));
         }
         if ((filters as any).purpose && (filters as any).purpose !== 'all') {
-          console.log('PropertiesListClient: Adding purpose filter:', (filters as any).purpose);
+          logger.log('PropertiesListClient: Adding purpose filter:', (filters as any).purpose);
           qRef = query(qRef, where('purpose', '==', (filters as any).purpose));
         }
         if ((filters as any).status && (filters as any).status !== 'all') {
-          console.log('PropertiesListClient: Adding status filter:', (filters as any).status);
+          logger.log('PropertiesListClient: Adding status filter:', (filters as any).status);
           qRef = query(qRef, where('status', '==', (filters as any).status));
         }
         if ((filters as any).projectId && (filters as any).projectId !== 'all') {
-          console.log('PropertiesListClient: Adding projectId filter:', (filters as any).projectId);
+          logger.log('PropertiesListClient: Adding projectId filter:', (filters as any).projectId);
           qRef = query(qRef, where('projectId', '==', (filters as any).projectId));
         }
 
         const snap = await getDocs(qRef);
-        console.log('PropertiesListClient: Found', snap.docs.length, 'properties');
-        console.log('PropertiesListClient: Filters applied:', filters);
+        logger.log('PropertiesListClient: Found', snap.docs.length, 'properties');
+        logger.log('PropertiesListClient: Filters applied:', filters);
         
         let items = snap.docs.map((d) => {
           const data = d.data() as any;
@@ -108,7 +109,7 @@ export default function PropertiesListClient({
             createdAt: data.createdAt?.toDate() || new Date(),
             updatedAt: data.updatedAt?.toDate() || new Date(),
           };
-          console.log('PropertiesListClient: Property:', property.titleAr, property.status);
+          logger.log('PropertiesListClient: Property:', property.titleAr, property.status);
           return property;
         }) as Property[];
 
@@ -132,8 +133,8 @@ export default function PropertiesListClient({
         if ((filters as any).bathrooms && (filters as any).bathrooms !== 'all')
           items = items.filter((p) => p.bathrooms && p.bathrooms >= Number((filters as any).bathrooms));
 
-        console.log('PropertiesListClient: After filters:', items.length, 'properties remain');
-        console.log('PropertiesListClient: Final properties:', items.map(p => ({ title: p.titleAr, status: p.status })));
+        logger.log('PropertiesListClient: After filters:', items.length, 'properties remain');
+        logger.log('PropertiesListClient: Final properties:', items.map(p => ({ title: p.titleAr, status: p.status })));
 
         if (!isMounted) return;
         setProperties(items);
@@ -155,11 +156,11 @@ export default function PropertiesListClient({
             setProjects(projectsData.projects);
           }
         } catch (error) {
-          console.error('Error fetching projects:', error);
+          logger.error('Error fetching projects:', error);
         }
       } catch (e) {
-        console.error('PropertiesListClient: Error fetching properties:', e);
-        console.error('PropertiesListClient: Error details:', {
+        logger.error('PropertiesListClient: Error fetching properties:', e);
+        logger.error('PropertiesListClient: Error details:', {
           message: e instanceof Error ? e.message : 'Unknown error',
           stack: e instanceof Error ? e.stack : undefined,
           name: e instanceof Error ? e.name : undefined,

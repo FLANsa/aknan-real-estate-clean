@@ -23,6 +23,7 @@ import ImageUploader from '@/components/ImageUploader';
 import LocationPicker from '@/components/LocationPicker';
 import { PROPERTY_PURPOSE_LABELS, PROPERTY_TYPE_LABELS, PROPERTY_STATUS_LABELS } from '@/types/property';
 import { MAP_CONFIG } from '@/lib/google-maps-config';
+import { logger } from '@/lib/performance';
 
 interface EditPropertyPageProps {
   params: {
@@ -96,7 +97,7 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
           setError(result.error || 'العقار غير موجود');
         }
       } catch (error) {
-        console.error('Error loading property:', error);
+        logger.error('Error loading property:', error);
         setError('حدث خطأ أثناء تحميل العقار');
       } finally {
         setIsLoading(false);
@@ -126,7 +127,7 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
         setError(result.error || 'حدث خطأ أثناء تحديث العقار');
       }
     } catch (error) {
-      console.error('Error updating property:', error);
+      logger.error('Error updating property:', error);
       setError('حدث خطأ غير متوقع');
     } finally {
       setIsSubmitting(false);
@@ -146,7 +147,7 @@ export default function EditPropertyPage({ params }: EditPropertyPageProps) {
         setError(result.error || 'حدث خطأ أثناء حذف العقار');
       }
     } catch (error) {
-      console.error('Error deleting property:', error);
+      logger.error('Error deleting property:', error);
       setError('حدث خطأ غير متوقع');
     } finally {
       setIsDeleting(false);

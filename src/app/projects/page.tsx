@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ChevronLeft, ChevronRight, MapPin, Calendar } from 'lucide-react';
+import { logger } from '@/lib/performance';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
@@ -65,8 +66,8 @@ export default function ProjectsPage() {
       setHasNextPage(hasNext);
       setHasPrevPage(isNext ? true : page > 0);
 
-    } catch (err) {
-      console.error('Error loading projects:', err);
+      } catch (err) {
+        logger.error('Error loading projects:', err);
       setError('حدث خطأ أثناء تحميل المشاريع');
     } finally {
       setLoading(false);

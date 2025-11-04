@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { logger } from '@/lib/performance';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -64,7 +65,7 @@ export default function AdminProjectsPage() {
       setHasPrevPage(isNext ? true : page > 0);
 
     } catch (err) {
-      console.error('Error loading projects:', err);
+      logger.error('Error loading projects:', err);
       setError('حدث خطأ أثناء تحميل المشاريع');
     } finally {
       setLoading(false);

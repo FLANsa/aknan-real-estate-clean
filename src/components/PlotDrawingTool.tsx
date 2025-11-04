@@ -14,6 +14,7 @@ import {
   Square
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { logger } from '@/lib/performance';
 
 interface PlotCoordinate {
   lat: number;
@@ -49,7 +50,7 @@ export default function PlotDrawingTool({
       const area = google.maps.geometry.spherical.computeArea(path);
       return Math.round(area);
     } catch (error) {
-      console.error('Error calculating area:', error);
+      logger.error('Error calculating area:', error);
       return 0;
     }
   }, [map]);
@@ -405,6 +406,7 @@ export default function PlotDrawingTool({
     </Card>
   );
 }
+
 
 
 

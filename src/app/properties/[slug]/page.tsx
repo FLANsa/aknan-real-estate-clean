@@ -7,10 +7,12 @@ import { collection, getDocs, limit, query, where } from 'firebase/firestore';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import PropertyMap from '@/components/PropertyMap';
+import { optimizeImages } from '@/lib/performance';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Property } from '@/types/property';
 import { 
   PROPERTY_STATUS_LABELS, 
   PROPERTY_TYPE_LABELS, 
@@ -47,7 +49,7 @@ export async function generateMetadata({ params }: PropertyDetailsPageProps): Pr
       title: 'العقار غير موجود',
     };
   }
-  const property: any = { id: snap.docs[0].id, ...snap.docs[0].data() };
+  const property: Property = { id: snap.docs[0].id, ...snap.docs[0].data() } as Property;
   
   return {
     title: `${property.titleAr} - أكنان القمة العقارية`,
@@ -55,7 +57,7 @@ export async function generateMetadata({ params }: PropertyDetailsPageProps): Pr
     openGraph: {
       title: property.titleAr,
       description: property.descriptionAr || `عقار ${PROPERTY_TYPE_LABELS[property.type]} في ${property.city}`,
-      images: property.images.length > 0 ? [property.images[0]] : [],
+      images: property.images && property.images.length > 0 ? [property.images[0]] : [],
     },
   };
 }
@@ -65,8 +67,8 @@ export default async function PropertyDetailsPage({ params }: PropertyDetailsPag
   const q = query(collection(db, 'properties'), where('slug', '==', resolvedParams.slug), limit(1));
   const snap = await getDocs(q);
   if (snap.empty) notFound();
-  const property: any = { id: snap.docs[0].id, ...snap.docs[0].data() };
-  const mainImage = property.images[0];
+  const property: Property = { id: snap.docs[0].id, ...snap.docs[0].data() } as Property;
+  const mainImage = property.images && property.images.length > 0 ? property.images[0] : null;
   const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP;
   
   const whatsappMessage = `مرحباً، أريد الاستفسار عن العقار: ${property.titleAr}`;
@@ -144,11 +146,14 @@ export default async function PropertyDetailsPage({ params }: PropertyDetailsPag
                     <div className="md:col-span-2 aspect-video relative">
                       {mainImage ? (
                         <Image
-                          src={mainImage}
-                          alt={property.titleAr}
+                          src={optimizeImages.getOptimizedUrl(mainImage, 1200, 675)}
+                          alt={property.titleAr || 'عقار'}
                           fill
                           className="object-cover rounded-t-lg"
                           priority
+                          sizes="(max-width: 768px) 100vw, 1200px"
+                          placeholder="blur"
+                          blurDataURL={optimizeImages.getSimpleBlurDataURL()}
                         />
                       ) : (
                         <div className="w-full h-full bg-muted rounded-t-lg flex items-center justify-center">
@@ -157,14 +162,17 @@ export default async function PropertyDetailsPage({ params }: PropertyDetailsPag
                       )}
                     </div>
                     
-                    {property.images.slice(1, 5).map((image, index) => (
+                    {property.images && property.images.length > 1 && property.images.slice(1, 5).map((image: string, index: number) => (
                       <div key={index} className="aspect-video relative">
                         <Image
-                          src={image}
-                          alt={`${property.titleAr} - صورة ${index + 2}`}
+                          src={optimizeImages.getOptimizedUrl(image, 600, 338)}
+                          alt={`${property.titleAr || 'عقار'} - صورة ${index + 2}`}
                           fill
                           className="object-cover"
                           sizes="(max-width: 768px) 100vw, 50vw"
+                          loading="lazy"
+                          placeholder="blur"
+                          blurDataURL={optimizeImages.getSimpleBlurDataURL()}
                         />
                       </div>
                     ))}
@@ -246,7 +254,7 @@ export default async function PropertyDetailsPage({ params }: PropertyDetailsPag
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {property.features.map((feature, index) => (
+                      {property.features.map((feature: string, index: number) => (
                         <div key={index} className="flex items-center gap-2">
                           <CheckCircle className="h-4 w-4 text-green-500" />
                           <span>{feature}</span>

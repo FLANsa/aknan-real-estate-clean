@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { logger } from '@/lib/performance';
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -107,7 +108,7 @@ export default function NewProjectPage() {
       const ref = await addDoc(collection(db, 'projects'), projectData);
       router.push(`/admin/projects/${ref.id}`);
     } catch (err) {
-      console.error('Error saving project:', err);
+      logger.error('Error saving project:', err);
       setError('حدث خطأ أثناء حفظ المشروع. يرجى المحاولة مرة أخرى');
       setSaving(false);
     }

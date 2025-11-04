@@ -8,6 +8,8 @@ import PropertyCard from '@/components/PropertyCard';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import useEmblaCarousel from 'embla-carousel-react';
+import { logger } from '@/lib/performance';
+import Image from 'next/image';
 
 // Memoized component for better performance
 const FeaturedPropertiesCarousel = memo(function FeaturedPropertiesCarousel() {
@@ -104,7 +106,7 @@ const FeaturedPropertiesCarousel = memo(function FeaturedPropertiesCarousel() {
 
         // إذا لم توجد عقارات مميزة، جلب عقارات عادية
         if (fetchedProperties.length === 0) {
-          console.log('No featured properties found, fetching regular properties...');
+          logger.log('No featured properties found, fetching regular properties...');
           const regularQuery = query(
             collection(db, 'properties'),
             where('status', '==', 'available'),
@@ -132,7 +134,7 @@ const FeaturedPropertiesCarousel = memo(function FeaturedPropertiesCarousel() {
 
         setProperties(fetchedProperties);
       } catch (err) {
-        console.error('Error fetching featured properties:', err);
+        logger.error('Error fetching featured properties:', err);
         
         // معالجة أخطاء محددة
         if (err instanceof Error) {
@@ -230,6 +232,13 @@ const FeaturedPropertiesCarousel = memo(function FeaturedPropertiesCarousel() {
             اكتشف مجموعة مختارة من أفضل العقارات المتاحة لدينا
           </p>
         </div>
+
+        {/* Preload first image using Next/Image to ensure component uses optimized Image */}
+        {properties[0]?.images?.[0] && (
+          <div className="sr-only" aria-hidden>
+            <Image src={properties[0].images[0]} alt="" width={1} height={1} priority />
+          </div>
+        )}
 
         {/* Carousel Container */}
         <div className="relative">

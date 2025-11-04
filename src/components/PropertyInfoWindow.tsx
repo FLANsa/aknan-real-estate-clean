@@ -1,9 +1,11 @@
 import React from 'react';
+import Image from 'next/image';
 import { Property } from '@/types/property';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Home, BedDouble, Bath, Maximize, MapPin, ExternalLink, Phone } from 'lucide-react';
 import Link from 'next/link';
+import { optimizeImages } from '@/lib/performance';
 
 interface PropertyInfoWindowProps {
   property: Property;
@@ -35,15 +37,21 @@ const PROPERTY_TYPE_LABELS: Record<Property['type'], string> = {
 export function PropertyInfoWindow({ property }: PropertyInfoWindowProps) {
   const slug = property.slug || property.id;
   const firstImage = property.images?.[0] || '/placeholder-property.jpg';
+  const optimizedImage = optimizeImages.getOptimizedUrl(firstImage, 320, 160);
 
   return (
     <div className="max-w-sm bg-white rounded-lg shadow-lg overflow-hidden" style={{ minWidth: '280px' }}>
       {/* Property Image */}
       <div className="relative h-40 overflow-hidden">
-        <img
-          src={firstImage}
-          alt={property.title}
-          className="w-full h-full object-cover"
+        <Image
+          src={optimizedImage}
+          alt={property.title || property.titleAr || 'عقار'}
+          fill
+          className="object-cover"
+          sizes="(max-width: 320px) 320px, 320px"
+          loading="lazy"
+          placeholder="blur"
+          blurDataURL={optimizeImages.getSimpleBlurDataURL()}
         />
         <div className="absolute top-2 right-2 flex gap-2">
           <Badge className={`${STATUS_COLORS[property.status]} text-white`}>
@@ -112,16 +120,23 @@ export function PropertyInfoWindow({ property }: PropertyInfoWindowProps) {
         {/* Image Gallery Preview */}
         {property.images && property.images.length > 1 && (
           <div className="flex gap-2 overflow-x-auto">
-            {property.images.slice(0, 4).map((image, index) => (
-              <img
-                key={index}
-                src={image}
-                alt={`${property.title} - ${index + 1}`}
-                className="w-16 h-16 object-cover rounded"
-              />
-            ))}
+            {property.images.slice(0, 4).map((image, index) => {
+              const optimizedThumb = optimizeImages.getOptimizedUrl(image, 64, 64);
+              return (
+                <div key={index} className="relative w-16 h-16 flex-shrink-0">
+                  <Image
+                    src={optimizedThumb}
+                    alt={`${property.title || property.titleAr || 'عقار'} - ${index + 1}`}
+                    fill
+                    className="object-cover rounded"
+                    sizes="64px"
+                    loading="lazy"
+                  />
+                </div>
+              );
+            })}
             {property.images.length > 4 && (
-              <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center text-sm font-medium">
+              <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center text-sm font-medium flex-shrink-0">
                 +{property.images.length - 4}
               </div>
             )}
@@ -159,8 +174,7 @@ export function propertyInfoWindowContent(property: Property): string {
 
   return `
     <div style="max-width: 280px; font-family: system-ui, -apple-system, sans-serif;">
-      <div style="position: relative; height: 160px; overflow: hidden; border-radius: 8px 8px 0 0;">
-        <img src="${firstImage}" alt="${property.title}" style="width: 100%; height: 100%; object-fit: cover;">
+      <div style="position: relative; height: 160px; overflow: hidden; border-radius: 8px 8px 0 0; background-image: url('${firstImage}'); background-size: cover; background-position: center;">
         <div style="position: absolute; top: 8px; right: 8px;">
           <span style="background: ${statusColor.replace('bg-', '')}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500;">
             ${statusLabel}

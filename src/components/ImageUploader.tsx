@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { X, Upload, Image as ImageIcon, GripVertical } from 'lucide-react';
 import { uploadPropertyImage, deletePropertyImage } from '@/lib/firebase/storage';
+import { optimizeImages, logger } from '@/lib/performance';
 
 interface ImageUploaderProps {
   images: string[];
@@ -85,7 +86,7 @@ export default function ImageUploader({
         }, 500);
 
       } catch (error) {
-        console.error('Upload error:', error);
+        logger.error('Upload error:', error);
         setUploadProgress(prev => 
           prev.map((upload, index) => 
             index === uploadIndex 
@@ -112,8 +113,8 @@ export default function ImageUploader({
       await deletePropertyImage(imageUrl);
       const newImages = images.filter((_, i) => i !== index);
       onImagesChange(newImages);
-    } catch (error) {
-      console.error('Error removing image:', error);
+      } catch (error) {
+        logger.error('Error removing image:', error);
       // Still remove from UI even if deletion fails
       const newImages = images.filter((_, i) => i !== index);
       onImagesChange(newImages);
@@ -184,17 +185,22 @@ export default function ImageUploader({
       {/* Image Grid */}
       {images.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {images.map((imageUrl, index) => (
-            <div key={index} className="relative group">
-              <Card className="overflow-hidden">
-                <div className="aspect-square relative">
-                  <Image
-                    src={imageUrl}
-                    alt={`صورة العقار ${index + 1}`}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                  />
+          {images.map((imageUrl, index) => {
+            const optimizedImage = optimizeImages.getOptimizedUrl(imageUrl, 200, 200);
+            return (
+              <div key={index} className="relative group">
+                <Card className="overflow-hidden">
+                  <div className="aspect-square relative">
+                    <Image
+                      src={optimizedImage}
+                      alt={`صورة العقار ${index + 1}`}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                      loading={index < 4 ? 'eager' : 'lazy'}
+                      placeholder="blur"
+                      blurDataURL={optimizeImages.getSimpleBlurDataURL()}
+                    />
                   
                   {/* Overlay */}
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
@@ -225,7 +231,8 @@ export default function ImageUploader({
                 </div>
               </Card>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

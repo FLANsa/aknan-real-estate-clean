@@ -1,190 +1,111 @@
 import type { LatLng } from '@/types/project';
+import { logger } from './performance';
 
-// تحويل مسار Google Maps Path إلى مصفوفة LatLng
-export const toLatLngArray = (path: google.maps.MVCArray<google.maps.LatLng>): LatLng[] => {
-  const result: LatLng[] = [];
-  for (let i = 0; i < path.getLength(); i++) {
-    const point = path.getAt(i);
-    result.push({ lat: point.lat(), lng: point.lng() });
+// تحويل Google Maps MVCArray أو LatLng[] إلى مصفوفة LatLng عادية
+export const toLatLngArray = (path: google.maps.MVCArray<google.maps.LatLng> | google.maps.LatLng[]): LatLng[] => {
+  const arr: LatLng[] = [];
+  const mvcArray = (path as any).getLength ? (path as google.maps.MVCArray<google.maps.LatLng>) : null;
+  
+  if (mvcArray) {
+    for (let i = 0; i < mvcArray.getLength(); i++) {
+      const c = mvcArray.getAt(i);
+      arr.push({ lat: c.lat(), lng: c.lng() });
+    }
+  } else {
+    (path as google.maps.LatLng[]).forEach((c) => arr.push({ lat: c.lat(), lng: c.lng() }));
   }
-  return result;
+  return arr;
 };
 
-// التأكد من إغلاق المضلع (إضافة النقطة الأولى في النهاية إذا لم تكن موجودة)
-export const ensureClosed = (path: LatLng[]): LatLng[] => {
-  if (path.length === 0) return path;
-  
-  const first = path[0];
-  const last = path[path.length - 1];
-  
-  // إذا كانت النقطة الأخيرة مختلفة عن الأولى، أضف النقطة الأولى في النهاية
+// التأكد من إغلاق المضلع (النقطة الأولى = النقطة الأخيرة)
+export const ensureClosed = (pts: LatLng[]): LatLng[] => {
+  if (pts.length < 3) return pts;
+  const first = pts[0];
+  const last = pts[pts.length - 1];
   if (first.lat !== last.lat || first.lng !== last.lng) {
-    return [...path, first];
+    return [...pts, first];
   }
-  
-  return path;
+  return pts;
 };
 
-// حساب مساحة المضلع بالمتر المربع باستخدام صيغة Shoelace
-export const polygonAreaSqm = (path: LatLng[]): number => {
+// حساب مساحة المضلع بالمتر المربع (Shoelace + WebMercator projection)
+export function polygonAreaSqm(path: LatLng[]): number {
   if (path.length < 3) return 0;
+  const R = 6378137; // Earth radius in meters
   
-  // إغلاق المضلع إذا لم يكن مغلقاً
-  const closedPath = ensureClosed(path);
+  // إسقاط WebMercator بسيط
+  const proj = (p: LatLng) => {
+    const x = (p.lng * Math.PI / 180) * R;
+    const y = Math.log(Math.tan((Math.PI / 4) + (p.lat * Math.PI / 360))) * R;
+    return { x, y };
+  };
   
-  let area = 0;
-  const n = closedPath.length - 1; // نستبعد النقطة الأخيرة المكررة
-  
-  // استخدام صيغة Shoelace لحساب المساحة
-  for (let i = 0; i < n; i++) {
-    const j = (i + 1) % n;
-    area += closedPath[i].lng * closedPath[j].lat;
-    area -= closedPath[j].lng * closedPath[i].lat;
+  const pts = path.map(proj);
+  let sum = 0;
+  for (let i = 0; i < pts.length - 1; i++) {
+    sum += (pts[i].x * pts[i + 1].y) - (pts[i + 1].x * pts[i].y);
   }
-  
-  area = Math.abs(area) / 2;
-  
-  // تحويل من درجات إلى متر مربع (تقريب)
-  // متوسط المسافة بين درجة واحدة من خط العرض = 111,320 متر
-  // متوسط المسافة بين درجة واحدة من خط الطول = 111,320 * cos(latitude) متر
-  // للحصول على تقريب جيد، نستخدم متوسط خط العرض
-  const avgLat = closedPath.reduce((sum, p) => sum + p.lat, 0) / n;
-  const latToMeters = 111320; // متر لكل درجة من خط العرض
-  const lngToMeters = 111320 * Math.cos((avgLat * Math.PI) / 180); // متر لكل درجة من خط الطول
-  
-  // تحويل المساحة إلى متر مربع
-  area = area * latToMeters * lngToMeters;
-  
-  return area;
-};
+  return Math.abs(sum / 2);
+}
 
 // التحقق من صحة المضلع (عدد النقاط كافي)
 export const isValidPolygon = (path: LatLng[]): boolean => {
   return path.length >= 3;
 };
 
-// التحقق من أن نقطة داخل مضلع باستخدام خوارزمية Ray Casting
-const isPointInPolygon = (point: LatLng, polygon: LatLng[]): boolean => {
-  let inside = false;
-  const n = polygon.length;
-  
-  for (let i = 0, j = n - 1; i < n; j = i++) {
-    const xi = polygon[i].lng;
-    const yi = polygon[i].lat;
-    const xj = polygon[j].lng;
-    const yj = polygon[j].lat;
-    
-    const intersect = 
-      ((yi > point.lat) !== (yj > point.lat)) &&
-      (point.lng < ((xj - xi) * (point.lat - yi)) / (yj - yi) + xi);
-    
-    if (intersect) {
-      inside = !inside;
-    }
-  }
-  
-  return inside;
-};
-
-// التحقق من أن المضلع داخل حدود المشروع
-export const isPolygonInsideBoundary = (
-  polygon: LatLng[],
-  boundary: LatLng[]
-): { inside: boolean; outsidePoints?: LatLng[] } => {
-  if (!boundary || boundary.length < 3) {
-    return { inside: true }; // إذا لم تكن هناك حدود، نعتبر المضلع صالحاً
-  }
-  
-  if (polygon.length < 3) {
-    return { inside: false };
-  }
-  
-  // التحقق من أن جميع نقاط المضلع داخل الحدود
-  const outsidePoints: LatLng[] = [];
-  
-  for (const point of polygon) {
-    if (!isPointInPolygon(point, boundary)) {
-      outsidePoints.push(point);
-    }
-  }
-  
-  return {
-    inside: outsidePoints.length === 0,
-    outsidePoints: outsidePoints.length > 0 ? outsidePoints : undefined,
-  };
-};
-
-// كشف التداخل بين مضلعين
+// كشف التداخل بين مضلعين باستخدام Google Maps Geometry
 export const checkPolygonOverlap = (
-  newPolygon: LatLng[],
+  newPolygon: LatLng[], 
   existingPolygons: LatLng[][]
 ): { overlaps: boolean; overlappingPlot?: string } => {
-  if (!window.google?.maps?.geometry?.poly) {
-    console.warn('Google Maps Geometry library not loaded');
-    // استخدام بديل بسيط
-    for (let i = 0; i < existingPolygons.length; i++) {
-      const existingPolygon = existingPolygons[i];
-      
-      // فحص إذا كانت أي نقطة من المضلع الجديد داخل المضلع الموجود
-      for (const point of newPolygon) {
-        if (isPointInPolygon(point, existingPolygon)) {
-          return { overlaps: true, overlappingPlot: `قطعة ${i + 1}` };
-        }
-      }
-      
-      // فحص إذا كانت أي نقطة من المضلع الموجود داخل المضلع الجديد
-      for (const point of existingPolygon) {
-        if (isPointInPolygon(point, newPolygon)) {
-          return { overlaps: true, overlappingPlot: `قطعة ${i + 1}` };
-        }
-      }
-    }
-    
+  if (typeof window === 'undefined' || !window.google?.maps?.geometry?.poly) {
+    logger.warn('Google Maps Geometry library not loaded');
     return { overlaps: false };
   }
+
+  const newPath = newPolygon.map(p => new google.maps.LatLng(p.lat, p.lng));
   
-  // استخدام Google Maps Geometry API إذا كان متاحاً
-  try {
-    const newPath = newPolygon.map(p => new google.maps.LatLng(p.lat, p.lng));
-    const newPoly = new google.maps.Polygon({ paths: newPath });
+  for (let i = 0; i < existingPolygons.length; i++) {
+    const existingPath = existingPolygons[i].map(p => new google.maps.LatLng(p.lat, p.lng));
     
-    for (let i = 0; i < existingPolygons.length; i++) {
-      const existingPath = existingPolygons[i].map(p => new google.maps.LatLng(p.lat, p.lng));
-      const existingPoly = new google.maps.Polygon({ paths: existingPath });
-      
-      // فحص إذا كانت أي نقطة من المضلع الجديد داخل المضلع الموجود
-      for (const point of newPath) {
-        if (google.maps.geometry.poly.containsLocation(point, existingPoly)) {
-          return { overlaps: true, overlappingPlot: `قطعة ${i + 1}` };
-        }
-      }
-      
-      // فحص إذا كانت أي نقطة من المضلع الموجود داخل المضلع الجديد
-      for (const point of existingPath) {
-        if (google.maps.geometry.poly.containsLocation(point, newPoly)) {
-          return { overlaps: true, overlappingPlot: `قطعة ${i + 1}` };
-        }
+    // فحص إذا كانت أي نقطة من المضلع الجديد داخل المضلع الموجود
+    for (const point of newPath) {
+      if (google.maps.geometry.poly.containsLocation(point, new google.maps.Polygon({ paths: existingPath }))) {
+        return { overlaps: true, overlappingPlot: `قطعة ${i + 1}` };
       }
     }
-  } catch (error) {
-    console.error('Error checking polygon overlap:', error);
-    // استخدام البديل البسيط
-    for (let i = 0; i < existingPolygons.length; i++) {
-      const existingPolygon = existingPolygons[i];
-      
-      for (const point of newPolygon) {
-        if (isPointInPolygon(point, existingPolygon)) {
-          return { overlaps: true, overlappingPlot: `قطعة ${i + 1}` };
-        }
-      }
-      
-      for (const point of existingPolygon) {
-        if (isPointInPolygon(point, newPolygon)) {
-          return { overlaps: true, overlappingPlot: `قطعة ${i + 1}` };
-        }
+    
+    // فحص إذا كانت أي نقطة من المضلع الموجود داخل المضلع الجديد
+    for (const point of existingPath) {
+      if (google.maps.geometry.poly.containsLocation(point, new google.maps.Polygon({ paths: newPath }))) {
+        return { overlaps: true, overlappingPlot: `قطعة ${i + 1}` };
       }
     }
   }
   
   return { overlaps: false };
+};
+
+// التحقق مما إذا كان المضلع الجديد داخل حدود المضلع الرئيسي
+export const isPolygonInsideBoundary = (
+  newPolygon: LatLng[],
+  boundaryPolygon: LatLng[]
+): { inside: boolean; outsidePoints?: LatLng[] } => {
+  if (typeof window === 'undefined' || !window.google?.maps?.geometry?.poly) {
+    logger.warn('Google Maps Geometry library not loaded');
+    return { inside: true }; // Fallback to true if library not loaded
+  }
+
+  const boundaryPath = boundaryPolygon.map(p => new google.maps.LatLng(p.lat, p.lng));
+  const boundaryPoly = new google.maps.Polygon({ paths: boundaryPath });
+
+  const outsidePoints: LatLng[] = [];
+  for (const point of newPolygon) {
+    const latLng = new google.maps.LatLng(point.lat, point.lng);
+    if (!google.maps.geometry.poly.containsLocation(latLng, boundaryPoly)) {
+      outsidePoints.push(point);
+    }
+  }
+
+  return { inside: outsidePoints.length === 0, outsidePoints };
 };

@@ -31,7 +31,7 @@ export default function Header() {
       <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-32 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center justify-center group">
+          <Link href="/" className="flex items-center justify-center group ml-auto mr-[-48px] sm:mr-[-72px] lg:mr-[-96px]">
             <div className="relative flex items-center justify-center">
               <Image
                 src="/logo.png"
@@ -39,7 +39,7 @@ export default function Header() {
                 width={800}
                 height={800}
                 className="group-hover:scale-105 transition-transform duration-300 object-contain"
-                style={{ maxHeight: '256px', width: 'auto' }}
+                style={{ maxHeight: '300px', width: 'auto' }}
               />
             </div>
           </Link>
@@ -153,7 +153,7 @@ export default function Header() {
                              shadow-lg shadow-black/30 border border-aknan-500
                              focus:outline-none focus:ring-2 focus:ring-aknan-400"
                 >
-                  احجز تقييم مجاني الآن
+                  تواصل معنا الآن
                 </Link>
               </div>
 

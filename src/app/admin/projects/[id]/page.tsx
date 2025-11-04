@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Edit, Save, X } from 'lucide-react';
+import { logger } from '@/lib/performance';
 
 export default function ProjectAdminPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -64,7 +65,7 @@ export default function ProjectAdminPage({ params }: { params: Promise<{ id: str
       setPlots(plotsData);
 
       } catch (err) {
-      console.error('Error loading data:', err);
+      logger.error('Error loading data:', err);
         setError('حدث خطأ أثناء تحميل البيانات');
       } finally {
         setLoading(false);
@@ -263,7 +264,7 @@ export default function ProjectAdminPage({ params }: { params: Promise<{ id: str
       setIsDrawingMode(false);
 
     } catch (err) {
-      console.error('Error saving plot:', err);
+      logger.error('Error saving plot:', err);
       setError('حدث خطأ أثناء حفظ القطعة');
     } finally {
       setSaving(false);

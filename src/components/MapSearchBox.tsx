@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Search, X, MapPin } from 'lucide-react';
 import { MapFiltersState } from '@/types/map-filters';
+import { logger } from '@/lib/performance';
 
 interface MapSearchBoxProps {
   map: google.maps.Map | null;
@@ -27,7 +28,7 @@ export default function MapSearchBox({ map, onPlaceSelected }: MapSearchBoxProps
       try {
         setRecentSearches(JSON.parse(saved));
       } catch (e) {
-        console.error('Error loading recent searches:', e);
+        logger.error('Error loading recent searches:', e);
       }
     }
 
@@ -46,7 +47,7 @@ export default function MapSearchBox({ map, onPlaceSelected }: MapSearchBoxProps
       const place = autocompleteInstance.getPlace();
 
       if (!place.geometry || !place.geometry.location) {
-        console.error('No geometry found for place:', place.name);
+        logger.error('No geometry found for place:', place.name);
         return;
       }
 

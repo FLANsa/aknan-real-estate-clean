@@ -23,6 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Home, Plus, Link as LinkIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { logger } from '@/lib/performance';
 
 interface Property {
   id: string;
@@ -102,7 +103,7 @@ export default function PlotSaleModal({
 
       handleClose();
     } catch (error) {
-      console.error('Error handling plot sale:', error);
+      logger.error('Error handling plot sale:', error);
       alert('حدث خطأ. يرجى المحاولة مرة أخرى.');
     } finally {
       setIsSubmitting(false);
@@ -325,6 +326,7 @@ export default function PlotSaleModal({
     </Dialog>
   );
 }
+
 
 
 

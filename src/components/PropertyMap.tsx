@@ -43,3 +43,4 @@ export default function PropertyMap({ lat, lng, title }: PropertyMapProps) {
   );
 }
 
+

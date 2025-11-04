@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { logger } from '@/lib/performance';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -49,7 +50,7 @@ export default function LoginPage() {
         setError(errorData.error || 'حدث خطأ أثناء تسجيل الدخول');
       }
     } catch (error: any) {
-      console.error('Login error:', error);
+      logger.error('Login error:', error);
       
       // Handle Firebase auth errors with Arabic messages
       switch (error.code) {

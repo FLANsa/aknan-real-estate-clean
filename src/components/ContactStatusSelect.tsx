@@ -3,6 +3,7 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ContactStatus } from '@/types/contact';
 import { useState } from 'react';
+import { logger } from '@/lib/performance';
 
 interface ContactStatusSelectProps {
   id: string;
@@ -27,10 +28,10 @@ const ContactStatusSelect = ({ id, currentStatus }: ContactStatusSelectProps) =>
       if (response.ok) {
         setStatus(newStatus);
       } else {
-        console.error('Failed to update status');
+        logger.error('Failed to update status');
       }
     } catch (error) {
-      console.error('Error updating status:', error);
+      logger.error('Error updating status:', error);
     } finally {
       setIsUpdating(false);
     }
@@ -64,6 +65,7 @@ const ContactStatusSelect = ({ id, currentStatus }: ContactStatusSelectProps) =>
 };
 
 export default ContactStatusSelect;
+
 
 
 

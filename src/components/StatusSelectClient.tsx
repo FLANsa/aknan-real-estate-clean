@@ -2,12 +2,11 @@
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ContactStatus } from '@/types/contact';
-import { EvaluationStatus } from '@/types/evaluation';
 import { useRouter } from 'next/navigation';
 
 interface StatusSelectClientProps {
-  currentStatus: ContactStatus | EvaluationStatus | string;
-  statuses: { value: ContactStatus | EvaluationStatus | 'all'; label: string }[];
+  currentStatus: ContactStatus | string;
+  statuses: { value: ContactStatus | 'all'; label: string }[];
   baseUrl: string;
 }
 
@@ -43,6 +42,7 @@ const StatusSelectClient = ({ currentStatus, statuses, baseUrl }: StatusSelectCl
 };
 
 export default StatusSelectClient;
+
 
 
 

@@ -6,6 +6,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { Property } from '@/types/property';
 import { Plot } from '@/types/map';
+import { PlotStatus } from '@/types/map';
 import { Project } from '@/types/project';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +16,7 @@ import GoogleMapsErrorHandler from '@/components/GoogleMapsErrorHandler';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { STATUS_LABELS } from '@/lib/google-maps-config';
+import { logger } from '@/lib/performance';
 
 // إعدادات الخريطة
 const mapContainerStyle = {
@@ -137,8 +139,8 @@ export default function PropertiesMapPage() {
       });
       
       return properties;
-    } catch (err) {
-      console.error('Error fetching properties:', err);
+      } catch (err) {
+        logger.error('Error fetching properties:', err);
       return [];
     }
   }, []);
@@ -166,10 +168,10 @@ export default function PropertiesMapPage() {
         }
       });
       
-      console.log('Fetched projects:', projects.length, projects);
+      logger.log('Fetched projects:', projects.length, projects);
       return projects;
     } catch (err) {
-      console.error('Error fetching projects:', err);
+      logger.error('Error fetching projects:', err);
       return [];
     }
   }, []);
@@ -198,28 +200,24 @@ export default function PropertiesMapPage() {
             plots.push({
               id: plotDoc.id,
               projectId: projectId,
-            number: data.number,
-              status: data.status || 'available',
+              plotNumber: data.number || plotDoc.id,
+              status: (data.status || 'available') as PlotStatus,
               price: data.price || 0,
-              currency: (data.currency || 'SAR') as 'SAR' | 'USD',
               polygon: data.polygonPath,
-            center: { lat: centerLat, lng: centerLng },
-              dimensions: {
-                area: data.area || 0,
-                perimeter: 0,
-              },
-            notes: data.notes,
-            propertyId: data.propertyId,
-            createdAt: data.createdAt?.toDate() || new Date(),
-            updatedAt: data.updatedAt?.toDate() || new Date(),
-          });
+              manualArea: data.area || 0,
+              images: data.images || [],
+              linkedPropertyIds: data.propertyId ? [data.propertyId] : [],
+              notes: data.notes,
+              createdAt: data.createdAt?.toDate() || new Date(),
+              updatedAt: data.updatedAt?.toDate() || new Date(),
+            });
         }
       });
       }
       
       return plots;
-    } catch (err) {
-      console.error('Error fetching plots:', err);
+      } catch (err) {
+        logger.error('Error fetching plots:', err);
       return [];
     }
   }, []);
@@ -256,13 +254,17 @@ export default function PropertiesMapPage() {
         
         // إضافة القطع
         plots.forEach((plot) => {
-          if (plot.center?.lat && plot.center?.lng) {
+          if (plot.polygon && plot.polygon.length > 0) {
+            // حساب المركز من polygon
+            const centerLat = plot.polygon.reduce((sum, point) => sum + point.lat, 0) / plot.polygon.length;
+            const centerLng = plot.polygon.reduce((sum, point) => sum + point.lng, 0) / plot.polygon.length;
+            
             mapMarkers.push({
               id: plot.id,
-              position: { lat: plot.center.lat, lng: plot.center.lng },
+              position: { lat: centerLat, lng: centerLng },
               type: 'plot',
               data: plot,
-              title: `القطعة ${plot.number}`,
+              title: `القطعة ${plot.plotNumber}`,
             });
           }
         });
@@ -272,7 +274,7 @@ export default function PropertiesMapPage() {
         setPlots(plots);
         
         // Debug: التحقق من حالة القطع
-        console.log('Map data loaded:', {
+        logger.log('Map data loaded:', {
           properties: properties.length,
           projects: projects.length,
           plots: plots.length,
@@ -281,7 +283,7 @@ export default function PropertiesMapPage() {
         
         // Debug: طباعة حالة كل قطعة
         plots.forEach(plot => {
-          console.log(`Plot ${plot.number}: status = "${plot.status}"`);
+          logger.log(`Plot ${plot.plotNumber}: status = "${plot.status}"`);
         });
         
         // تحديث مركز الخريطة وzoom لتظهر جميع البيانات
@@ -327,7 +329,7 @@ export default function PropertiesMapPage() {
         }
         
       } catch (err) {
-        console.error('Error loading map data:', err);
+        logger.error('Error loading map data:', err);
         setError('فشل في تحميل بيانات الخريطة');
       } finally {
         setLoading(false);
@@ -346,23 +348,25 @@ export default function PropertiesMapPage() {
 
   // معالجة النقر على القطعة
   const handlePlotClick = useCallback((plot: Plot) => {
-    // حساب المركز من polygon إذا لم يكن موجوداً
-    let center = plot.center;
-    if (!center && plot.polygon && plot.polygon.length > 0) {
+    // حساب المركز من polygon
+    let center: { lat: number; lng: number };
+    if (plot.polygon && plot.polygon.length > 0) {
       const latSum = plot.polygon.reduce((sum, point) => sum + point.lat, 0);
       const lngSum = plot.polygon.reduce((sum, point) => sum + point.lng, 0);
       center = {
         lat: latSum / plot.polygon.length,
         lng: lngSum / plot.polygon.length,
       };
+    } else {
+      center = { lat: 0, lng: 0 };
     }
     
     const marker: MapMarker = {
       id: plot.id,
-      position: center || { lat: 0, lng: 0 },
+      position: center,
       type: 'plot',
       data: plot,
-      title: `القطعة ${plot.number}`,
+      title: `القطعة ${plot.plotNumber}`,
     };
     setSelectedMarker(marker);
   }, []);
@@ -458,20 +462,20 @@ export default function PropertiesMapPage() {
     <div className="p-4 max-w-sm">
       <div className="space-y-3">
         <div className="flex items-start justify-between">
-          <h3 className="font-bold text-lg text-right">قطعة رقم: {plot.number}</h3>
+          <h3 className="font-bold text-lg text-right">قطعة رقم: {plot.plotNumber}</h3>
           <Badge variant={plot.status === 'available' ? "default" : "secondary"}>
             {STATUS_LABELS[plot.status as keyof typeof STATUS_LABELS] || plot.status}
           </Badge>
         </div>
         
         <div className="text-sm text-muted-foreground space-y-1">
-          {plot.dimensions?.area && (
+          {plot.manualArea && plot.manualArea > 0 && (
             <p>
-              <strong>المساحة:</strong> {Math.round(plot.dimensions.area)} م²
+              <strong>المساحة:</strong> {Math.round(plot.manualArea)} م²
             </p>
           )}
           
-          {plot.price && (
+          {plot.price && plot.price > 0 && (
             <p>
               <strong>السعر:</strong> {plot.price.toLocaleString()} ر.س
             </p>
@@ -490,7 +494,7 @@ export default function PropertiesMapPage() {
         
         <div className="flex gap-2">
           <Button size="sm" variant="outline" asChild>
-            <a href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP}?text=أريد الاستفسار عن القطعة: ${plot.number}`} target="_blank" rel="noopener noreferrer">
+            <a href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP}?text=أريد الاستفسار عن القطعة: ${plot.plotNumber}`} target="_blank" rel="noopener noreferrer">
               <MessageCircle className="h-4 w-4" />
             </a>
           </Button>
@@ -680,7 +684,7 @@ export default function PropertiesMapPage() {
                       const colors = getPlotColors(plot.status);
                       
                       // Debug: طباعة حالة القطعة واللون المستخدم
-                      console.log(`Rendering plot ${plot.number}: status="${plot.status}", color=${colors.fillColor}`);
+                      logger.log(`Rendering plot ${plot.plotNumber}: status="${plot.status}", color=${colors.fillColor}`);
                       
                       return (
                         <Polygon

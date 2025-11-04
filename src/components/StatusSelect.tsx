@@ -1,43 +1,36 @@
 'use client';
 
 import { useState } from 'react';
+import { logger } from '@/lib/performance';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ContactStatus, CONTACT_STATUS_LABELS } from '@/types/contact';
-import { EvaluationStatus, EVALUATION_STATUS_LABELS } from '@/types/evaluation';
 import { updateContactStatus } from '@/app/contact/actions';
-import { updateEvaluationStatus } from '@/app/evaluation/actions';
 
 interface StatusSelectProps {
   id: string;
-  currentStatus: ContactStatus | EvaluationStatus;
-  type: 'contact' | 'evaluation';
+  currentStatus: ContactStatus;
   onStatusChange?: (newStatus: string) => void;
 }
 
-export function StatusSelect({ id, currentStatus, type, onStatusChange }: StatusSelectProps) {
+export function StatusSelect({ id, currentStatus, onStatusChange }: StatusSelectProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   
-  const labels = type === 'contact' ? CONTACT_STATUS_LABELS : EVALUATION_STATUS_LABELS;
-  const statuses = Object.keys(labels) as (ContactStatus | EvaluationStatus)[];
+  const labels = CONTACT_STATUS_LABELS;
+  const statuses = Object.keys(labels) as ContactStatus[];
   
   const handleStatusChange = async (newStatus: string) => {
     setIsUpdating(true);
     
     try {
-      let result;
-      if (type === 'contact') {
-        result = await updateContactStatus(id, newStatus as ContactStatus);
-      } else {
-        result = await updateEvaluationStatus(id, newStatus as EvaluationStatus);
-      }
+      const result = await updateContactStatus(id, newStatus as ContactStatus);
       
       if (result.success) {
         onStatusChange?.(newStatus);
       } else {
-        console.error('Failed to update status:', result.message);
+        logger.error('Failed to update status:', result.message);
       }
     } catch (error) {
-      console.error('Error updating status:', error);
+      logger.error('Error updating status:', error);
     } finally {
       setIsUpdating(false);
     }
@@ -62,6 +55,7 @@ export function StatusSelect({ id, currentStatus, type, onStatusChange }: Status
     </Select>
   );
 }
+
 
 
 

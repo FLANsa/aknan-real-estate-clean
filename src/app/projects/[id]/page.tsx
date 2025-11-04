@@ -8,6 +8,7 @@ import { STATUS_COLORS, STATUS_LABELS } from '@/lib/google-maps-config';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Calendar, Square, DollarSign, Eye } from 'lucide-react';
+import { logger } from '@/lib/performance';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
@@ -61,8 +62,8 @@ export default function ProjectPublicPage({ params }: { params: Promise<{ id: st
       const plotsData = plotsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Plot & { id: string }));
       setPlots(plotsData);
 
-    } catch (err) {
-      console.error('Error loading data:', err);
+      } catch (err) {
+        logger.error('Error loading data:', err);
       setError('حدث خطأ أثناء تحميل البيانات');
     } finally {
       setLoading(false);
@@ -75,10 +76,10 @@ export default function ProjectPublicPage({ params }: { params: Promise<{ id: st
 
   // رسم الخريطة عند تحميل المشروع والقطع
   useEffect(() => {
-    if (!mapRef.current || !project || !isMapReady) {
-      console.log('Map render waiting:', { mapReady: !!mapRef.current, project: !!project, isMapReady });
-      return;
-    }
+      if (!mapRef.current || !project || !isMapReady) {
+        logger.log('Map render waiting:', { mapReady: !!mapRef.current, project: !!project, isMapReady });
+        return;
+      }
 
     const map = mapRef.current;
 
@@ -97,8 +98,8 @@ export default function ProjectPublicPage({ params }: { params: Promise<{ id: st
     }
 
     // حدود المشروع (أسود)
-    if (project.boundaryPath && Array.isArray(project.boundaryPath) && project.boundaryPath.length > 0) {
-      console.log('Drawing project boundary with', project.boundaryPath.length, 'points');
+        if (project.boundaryPath && Array.isArray(project.boundaryPath) && project.boundaryPath.length > 0) {
+          logger.log('Drawing project boundary with', project.boundaryPath.length, 'points');
       boundaryPoly.current = new google.maps.Polygon({
         paths: project.boundaryPath,
         strokeColor: '#000',
@@ -145,14 +146,14 @@ export default function ProjectPublicPage({ params }: { params: Promise<{ id: st
     }
 
     // رسم القطع
-    console.log(`Starting to render ${plots.length} plots`);
-    plots.forEach((plot) => {
-      if (!plot.polygonPath || !Array.isArray(plot.polygonPath) || plot.polygonPath.length === 0) {
-        console.warn(`Plot ${plot.number} has invalid polygonPath:`, plot.polygonPath);
-        return;
-      }
-      
-      console.log(`Rendering plot ${plot.number} with status ${plot.status}`);
+        logger.log(`Starting to render ${plots.length} plots`);
+        plots.forEach((plot) => {
+          if (!plot.polygonPath || !Array.isArray(plot.polygonPath) || plot.polygonPath.length === 0) {
+            logger.warn(`Plot ${plot.number} has invalid polygonPath:`, plot.polygonPath);
+            return;
+          }
+          
+          logger.log(`Rendering plot ${plot.number} with status ${plot.status}`);
 
       const poly = new google.maps.Polygon({
         paths: plot.polygonPath,
@@ -173,7 +174,7 @@ export default function ProjectPublicPage({ params }: { params: Promise<{ id: st
         }
 
         const images = plot.images?.slice(0, 3).map(src => 
-          `<img src="${src}" style="width:80px;height:60px;object-fit:cover;border-radius:6px;margin:2px"/>`
+          `<div style="width:80px;height:60px;border-radius:6px;margin:2px;background-image:url('${src}');background-size:cover;background-position:center"></div>`
         ).join('') ?? '';
         
         const html = `
@@ -208,17 +209,17 @@ export default function ProjectPublicPage({ params }: { params: Promise<{ id: st
       });
     });
 
-    console.log(`Rendered ${plotPolys.current.length} plots on map`);
+    logger.log(`Rendered ${plotPolys.current.length} plots on map`);
   }, [project, plots, isMapReady]);
 
   const onMapLoad = (map: google.maps.Map) => {
-    console.log('Map loaded, setting mapRef');
+    logger.log('Map loaded, setting mapRef');
     mapRef.current = map;
     setIsMapReady(true);
     
     // إذا كانت البيانات جاهزة، رسم العناصر مباشرة
     if (project && plots.length >= 0) {
-      console.log('Data already loaded, will render in useEffect');
+      logger.log('Data already loaded, will render in useEffect');
     }
   };
 

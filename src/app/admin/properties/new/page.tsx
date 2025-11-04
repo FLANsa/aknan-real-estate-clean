@@ -19,6 +19,7 @@ import ImageUploader from '@/components/ImageUploader';
 import LocationPicker from '@/components/LocationPicker';
 import { PROPERTY_PURPOSE_LABELS, PROPERTY_TYPE_LABELS, PROPERTY_STATUS_LABELS } from '@/types/property';
 import { MAP_CONFIG } from '@/lib/google-maps-config';
+import { logger } from '@/lib/performance';
 
 export default function NewPropertyPage() {
   const [images, setImages] = useState<string[]>([]);
@@ -70,7 +71,7 @@ export default function NewPropertyPage() {
         setError(result.error || 'حدث خطأ أثناء إنشاء العقار');
       }
     } catch (error) {
-      console.error('Error creating property:', error);
+      logger.error('Error creating property:', error);
       setError('حدث خطأ غير متوقع');
     } finally {
       setIsSubmitting(false);

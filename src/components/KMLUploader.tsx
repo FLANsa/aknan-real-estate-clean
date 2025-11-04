@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Upload, FileText, Loader2, CheckCircle, XCircle, MapPin } from 'lucide-react';
 import { parseKMLFile, KMLPolygon } from '@/lib/kml-parser';
+import { logger } from '@/lib/performance';
 
 interface KMLUploaderProps {
   onPlotsImported: (plots: KMLPolygon[]) => void;
@@ -48,7 +49,7 @@ export default function KMLUploader({ onPlotsImported, projectName }: KMLUploade
       setIsShowingPreview(true);
       setIsUploading(false);
     } catch (err) {
-      console.error('Error processing KML file:', err);
+      logger.error('Error processing KML file:', err);
       setError('حدث خطأ أثناء معالجة الملف.');
       setIsUploading(false);
     }
@@ -192,6 +193,7 @@ export default function KMLUploader({ onPlotsImported, projectName }: KMLUploade
     </div>
   );
 }
+
 
 
 
