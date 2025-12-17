@@ -77,25 +77,55 @@ const FeaturedPropertiesCarousel = memo(function FeaturedPropertiesCarousel() {
         setLoading(true);
         setError(null);
 
-        const q = query(
-          collection(db, 'properties'),
-          where('featured', '==', true),
-          where('status', '==', 'available'),
-          limit(10)
-        );
+        let fetchedProperties: Property[] = [];
 
-        const querySnapshot = await getDocs(q);
-        const fetchedProperties: Property[] = [];
+        // محاولة جلب العقارات المميزة المتاحة
+        try {
+          const q = query(
+            collection(db, 'properties'),
+            where('featured', '==', true),
+            where('status', '==', 'available'),
+            limit(10)
+          );
 
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          fetchedProperties.push({
-            id: doc.id,
-            ...data,
-            createdAt: data.createdAt?.toDate() || new Date(),
-            updatedAt: data.updatedAt?.toDate() || new Date(),
-          } as Property);
-        });
+          const querySnapshot = await getDocs(q);
+          querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            fetchedProperties.push({
+              id: doc.id,
+              ...data,
+              createdAt: data.createdAt?.toDate() || new Date(),
+              updatedAt: data.updatedAt?.toDate() || new Date(),
+            } as Property);
+          });
+        } catch (queryError) {
+          logger.log('Complex query failed, trying simpler approach...', queryError);
+          
+          // إذا فشل الاستعلام المعقد، جلب جميع العقارات المتاحة ثم فلترة محلياً
+          try {
+            const regularQuery = query(
+              collection(db, 'properties'),
+              where('status', '==', 'available'),
+              limit(50)
+            );
+            
+            const regularSnapshot = await getDocs(regularQuery);
+            regularSnapshot.forEach((doc) => {
+              const data = doc.data();
+              if (data.featured === true) {
+                fetchedProperties.push({
+                  id: doc.id,
+                  ...data,
+                  createdAt: data.createdAt?.toDate() || new Date(),
+                  updatedAt: data.updatedAt?.toDate() || new Date(),
+                } as Property);
+              }
+            });
+          } catch (fallbackError) {
+            logger.error('Fallback query also failed:', fallbackError);
+            throw fallbackError;
+          }
+        }
 
         // ترتيب محلي حسب التاريخ (الأحدث أولاً)
         fetchedProperties.sort((a, b) => {
@@ -107,29 +137,34 @@ const FeaturedPropertiesCarousel = memo(function FeaturedPropertiesCarousel() {
         // إذا لم توجد عقارات مميزة، جلب عقارات عادية
         if (fetchedProperties.length === 0) {
           logger.log('No featured properties found, fetching regular properties...');
-          const regularQuery = query(
-            collection(db, 'properties'),
-            where('status', '==', 'available'),
-            limit(6)
-          );
-          
-          const regularSnapshot = await getDocs(regularQuery);
-          regularSnapshot.forEach((doc) => {
-            const data = doc.data();
-            fetchedProperties.push({
-              id: doc.id,
-              ...data,
-              createdAt: data.createdAt?.toDate() || new Date(),
-              updatedAt: data.updatedAt?.toDate() || new Date(),
-            } as Property);
-          });
-          
-          // ترتيب محلي
-          fetchedProperties.sort((a, b) => {
-            const dateA = a.createdAt.getTime();
-            const dateB = b.createdAt.getTime();
-            return dateB - dateA;
-          });
+          try {
+            const regularQuery = query(
+              collection(db, 'properties'),
+              where('status', '==', 'available'),
+              limit(6)
+            );
+            
+            const regularSnapshot = await getDocs(regularQuery);
+            regularSnapshot.forEach((doc) => {
+              const data = doc.data();
+              fetchedProperties.push({
+                id: doc.id,
+                ...data,
+                createdAt: data.createdAt?.toDate() || new Date(),
+                updatedAt: data.updatedAt?.toDate() || new Date(),
+              } as Property);
+            });
+            
+            // ترتيب محلي
+            fetchedProperties.sort((a, b) => {
+              const dateA = a.createdAt.getTime();
+              const dateB = b.createdAt.getTime();
+              return dateB - dateA;
+            });
+          } catch (regularError) {
+            logger.error('Failed to fetch regular properties:', regularError);
+            throw regularError;
+          }
         }
 
         setProperties(fetchedProperties);
@@ -138,12 +173,13 @@ const FeaturedPropertiesCarousel = memo(function FeaturedPropertiesCarousel() {
         
         // معالجة أخطاء محددة
         if (err instanceof Error) {
-          if (err.message.includes('index')) {
+          const errorMessage = err.message.toLowerCase();
+          if (errorMessage.includes('index')) {
             setError('فشل في تحميل العقارات المميزة: يرجى إنشاء index في Firestore');
-          } else if (err.message.includes('permission')) {
-            setError('فشل في تحميل العقارات المميزة: مشكلة في الصلاحيات');
+          } else if (errorMessage.includes('permission') || errorMessage.includes('permissions-denied')) {
+            setError('فشل في تحميل العقارات المميزة: مشكلة في الصلاحيات - تأكد من نشر قواعد Firestore الصحيحة');
           } else {
-            setError('فشل في تحميل العقارات المميزة');
+            setError('فشل في تحميل العقارات المميزة: ' + err.message);
           }
         } else {
           setError('فشل في تحميل العقارات المميزة');

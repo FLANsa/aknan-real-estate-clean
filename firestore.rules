@@ -2,110 +2,38 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper functions
-    function isAdmin() {
-      return request.auth != null && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    // Properties collection - public read, admin write only
+    match /properties/{propertyId} {
+      allow read: if true; // الجميع يمكنهم القراءة
+      allow create, update, delete: if false; // فقط من خلال Admin SDK
     }
     
-    function isValidStatus(status) {
-      return status in ['available', 'hold', 'sold'];
-    }
-    
-    function hasMinPoints(path) {
-      return path.size() >= 4; // 3 نقاط + إغلاق
-    }
-    
-    // Projects collection
+    // Projects collection - public read, admin write only
     match /projects/{projectId} {
-      allow read: if true;
-      allow create: if isAdmin()
-        && request.resource.data.name is string
-        && request.resource.data.name.size() > 0
-        && request.resource.data.center.lat is number
-        && request.resource.data.center.lng is number
-        && request.resource.data.boundaryPath is list
-        && hasMinPoints(request.resource.data.boundaryPath);
-      
-      allow update: if isAdmin()
-        && request.resource.data.name is string
-        && request.resource.data.name.size() > 0;
-      
-      allow delete: if isAdmin();
+      allow read: if true; // الجميع يمكنهم القراءة
+      allow create, update, delete: if false; // فقط من خلال Admin SDK
       
       // Plots subcollection
       match /plots/{plotId} {
-        allow read: if true;
-        allow create: if isAdmin()
-          && request.resource.data.number is string
-          && request.resource.data.number.size() > 0
-          && request.resource.data.polygonPath is list
-          && hasMinPoints(request.resource.data.polygonPath)
-          && isValidStatus(request.resource.data.status)
-          && (!('price' in request.resource.data) || 
-              (request.resource.data.price is number && request.resource.data.price >= 0))
-          && (!('area' in request.resource.data) || 
-              (request.resource.data.area is number && request.resource.data.area > 0))
-          && (!('notes' in request.resource.data) || 
-              request.resource.data.notes.size() <= 500);
-        
-        allow update: if isAdmin()
-          && isValidStatus(request.resource.data.status);
-        
-        allow delete: if isAdmin();
+        allow read: if true; // الجميع يمكنهم القراءة
+        allow create, update, delete: if false; // فقط من خلال Admin SDK
       }
     }
     
-    // Properties collection (existing)
-    match /properties/{propertyId} {
-      allow read: if true;
-      allow write: if false; // Admin SDK only
-    }
-    
-    // Contact messages (existing)
+    // Contact messages - admin only (via Admin SDK)
     match /contact_messages/{messageId} {
-      allow read: if false; // Admin SDK only
-      allow write: if false; // Admin SDK only
+      allow read, write: if false; // فقط من خلال Admin SDK
     }
     
-    // Evaluation requests (existing)
+    // Evaluation requests - admin only (via Admin SDK)
     match /evaluation_requests/{requestId} {
-      allow read: if false; // Admin SDK only
-      allow write: if false; // Admin SDK only
+      allow read, write: if false; // فقط من خلال Admin SDK
     }
     
-    // Default rule for all other documents
+    // Default rule for all other documents - public read, admin write only
     match /{document=**} {
       allow read: if true;
       allow write: if false; // Admin SDK only
-    }
-    
-    // Projects collection - public read, admin write
-    match /projects/{projectId} {
-      allow read: if true; // الجميع يمكنهم القراءة
-      allow create, update, delete: if false; // فقط من خلال Admin SDK
-    }
-    
-    // Plots collection - public read, admin write
-    match /plots/{plotId} {
-      allow read: if true; // الجميع يمكنهم القراءة
-      allow create, update, delete: if false; // فقط من خلال Admin SDK
-    }
-    
-    // Properties collection - public read, admin write
-    match /properties/{propertyId} {
-      allow read: if true; // الجميع يمكنهم القراءة
-      allow create, update, delete: if false; // فقط من خلال Admin SDK
-    }
-    
-    // Contact messages - admin only
-    match /contact_messages/{messageId} {
-      allow read, write: if false; // فقط من خلال Admin SDK
-    }
-    
-    // Evaluation requests - admin only
-    match /evaluation_requests/{requestId} {
-      allow read, write: if false; // فقط من خلال Admin SDK
     }
   }
 }
